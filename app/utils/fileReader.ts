@@ -5,12 +5,19 @@ export async function extractTextFromFile(file: File): Promise<string> {
 
   // Xử lý file Word
   if (file.name.endsWith('.docx')) {
-    // SỬ DỤNG convertToHtml ĐỂ GIỮ NGUYÊN CẤU TRÚC BẢNG BIỂU VÀ ĐỊNH DẠNG HTML
-    const result = await mammoth.convertToHtml({ arrayBuffer });
+    // Dùng (mammoth as any) để bỏ qua lỗi TypeScript thiếu khai báo types
+    // Sử dụng imgElement và trả về src rỗng để chặn render base64
+    const options = {
+      convertImage: (mammoth as any).images.imgElement(function() {
+        return Promise.resolve({ src: "" }); 
+      })
+    };
+
+    const result = await mammoth.convertToHtml({ arrayBuffer }, options);
     return result.value;
   }
 
-  // Xử lý file PDF (PDF không hỗ trợ xuất HTML dễ dàng như Word, nên vẫn lấy Text)
+  // Xử lý file PDF
   if (file.name.endsWith('.pdf')) {
     const pdfjsLib = await import('pdfjs-dist');
     pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;

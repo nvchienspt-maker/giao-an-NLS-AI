@@ -322,4 +322,4 @@ export default function Home() {
       <SettingsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} apiKey={apiKey} setApiKey={setApiKey} model={model} setModel={setModel} />
     </div>
   );
-}
+} 
