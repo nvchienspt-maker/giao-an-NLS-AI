@@ -51,29 +51,35 @@ export default function Home() {
     const steps = [
       "Đang trích xuất dữ liệu từ tệp gốc...",
       appendixFile ? "Đang phân tích Phụ lục và đối chiếu Năng lực..." : "",
-      "Đang gửi dữ liệu và bối cảnh môn học tới AI...",
-      "AI đang phân tích và cấu trúc lại Kế hoạch bài dạy...",
+      "Đang gửi dữ liệu tới máy chủ Google AI...",
+      "AI đang cấu trúc lại Kế hoạch bài dạy...",
       options.ai ? "Đang tích hợp Năng lực Trí tuệ nhân tạo..." : "",
       options.inclusive ? "Đang bổ sung phương pháp Giáo dục hòa nhập..." : "",
       options.foreignLang ? "Đang gắn thuật ngữ chuyên ngành (CLIL)..." : "",
       options.bilingual ? "Đang tạo phân đoạn Song ngữ Việt - Anh..." : "",
-      "Đang rà soát và định dạng lại giao diện kết quả..."
+      "Đang định dạng lại mã HTML để hiển thị và tải xuống..."
     ].filter(Boolean);
 
     let stepIndex = 0;
+    let secondsWaited = 0;
     setProgressText(steps[0]);
 
+    // Thay đổi logic Interval để đếm thời gian thực nếu API chạy lâu
     const progressInterval = setInterval(() => {
-      stepIndex++;
-      if (stepIndex < steps.length) {
+      secondsWaited += 2.5; // Tăng thời gian chờ (mỗi chu kỳ 2.5s)
+      
+      if (stepIndex < steps.length - 1) {
+        stepIndex++;
         setProgressText(steps[stepIndex]);
+      } else {
+        // Khi chữ đã chạy hết mà AI vẫn chưa trả kết quả
+        setProgressText(`AI vẫn đang viết giáo án... Vui lòng đợi (${Math.floor(secondsWaited)}s)`);
       }
     }, 2500);
     
     try {
       const textContent = await extractTextFromFile(file);
       
-      // Đọc thêm text từ Phụ lục nếu người dùng có tải lên
       let appendixText = "";
       if (appendixFile) {
          appendixText = await extractTextFromFile(appendixFile);
@@ -81,7 +87,6 @@ export default function Home() {
 
       const contextInfo = `Môn học: ${subject}, Khối lớp: ${grade}`;
       
-      // Gửi cả appendixText vào hàm AI
       const aiResponse = await generateLessonPlan(apiKey, model, textContent, options, contextInfo, appendixText);
       
       clearInterval(progressInterval);
