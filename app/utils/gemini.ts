@@ -26,24 +26,24 @@ export async function generateLessonPlan(
       } 
   });
 
-  let prompt = `BẠN LÀ MỘT CHUYÊN GIA BIÊN TẬP GIÁO ÁN SƯ PHẠM.
+  let prompt = `BẠN LÀ MỘT HỆ THỐNG PHÂN TÍCH VÀ ĐỊNH VỊ CẤU TRÚC GIÁO ÁN SƯ PHẠM.
 Bối cảnh: ${contextInfo}
 
---- NHIỆM VỤ ---
-Đọc "Giáo án gốc" và tìm các vị trí sau để chèn thêm nội dung tích hợp (dưới dạng gạch đầu dòng chuẩn sư phạm):
-1. Phần "Mục tiêu bài học" (Mục tiêu chung).
-2. Phần "Mục tiêu" bên trong các "Hoạt động" (Hoạt động 1, Hoạt động 2...).
+--- NHIỆM VỤ QUAN TRỌNG ---
+Bạn phải tìm và lập danh sách các vị trí cần chèn nội dung tích hợp vào **HAI NƠI**:
+1. **Mục tiêu chung của bài học** (Phần đầu giáo án).
+2. **Mục tiêu của từng Hoạt động** (Tìm chính xác các dòng có chữ dạng: "a) Mục tiêu:", "Mục tiêu:", hoặc dòng mở đầu phần nội dung của Hoạt động 1, Hoạt động 2...).
 
 --- QUY TẮC ĐỊNH DẠNG VÀ MÀU SẮC (BẮT BUỘC) ---
-- Định dạng chuẩn: Phải viết dưới dạng gạch đầu dòng, ví dụ: "- Phát triển năng lực số (Mã số): Nội dung..." hoặc "- Năng lực AI: Nội dung..."
-- MÀU SẮC (Dùng mã màu Hex cho thuộc tính màu trong Word):
-  * Năng lực số: Mã màu #00008B (Xanh dương tối)
-  * Năng lực AI: Mã màu #B8860B (Vàng tối)
-  * Giáo dục hòa nhập: Mã màu #8B0000 (Đỏ tối)
+- Định dạng: Viết dưới dạng gạch đầu dòng chuẩn sư phạm. Ví dụ: "- Phát triển năng lực số (Mã): Nội dung..." hoặc "- Năng lực AI: Nội dung..."
+- MÀU SẮC (Mã màu Hex cho file Word):
+  * Năng lực số: #00008B (Xanh dương tối)
+  * Năng lực AI: #B8860B (Vàng tối)
+  * Giáo dục hòa nhập: #8B0000 (Đỏ tối)
 `;
 
   if (appendixContent) {
-    prompt += `\n[PHỤ LỤC PPCT]\nDùng để tra cứu tên bài và chọn mã Năng lực số (VD: 3.4.NC1a, 5.3.NC1b...) phù hợp nhất:\n${appendixContent}\n`;
+    prompt += `\n[PHỤ LỤC PPCT]\nDùng để tra cứu tên bài và chọn mã Năng lực số (VD: 3.4.NC1a, 5.3.NC1b...) phù hợp:\n${appendixContent}\n`;
   }
 
   prompt += `
@@ -51,18 +51,17 @@ Bối cảnh: ${contextInfo}
 ${lessonContent}
 
 --- CÁC TÙY CHỌN TÍCH HỢP (CHỈ CHÈN KHI ĐƯỢC BẬT) ---
-- Luôn luôn chèn Năng lực số (dựa vào Phụ lục hoặc nội dung bài) vào Mục tiêu bài học và Mục tiêu các hoạt động. (Màu: 00008B)
+- Luôn luôn chèn Năng lực số vào Mục tiêu chung VÀ Mục tiêu của các Hoạt động giảng dạy. (Màu: 00008B)
 `;
 
-  // Chỉ bật câu lệnh khi người dùng thực sự tích chọn trong giao diện
   if (options.ai) {
-    prompt += `- [ĐÃ BẬT] Chèn tích hợp "Năng lực AI" vào mục tiêu hoặc hoạt động phù hợp. (Mã màu: B8860B)\n`;
+    prompt += `- [ĐÃ BẬT] Chèn tích hợp "Năng lực AI" vào mục tiêu hoạt động phù hợp. (Mã màu: B8860B)\n`;
   }
   if (options.inclusive) {
-    prompt += `- [ĐÃ BẬT] Chèn giải pháp "Giáo dục hòa nhập" hỗ trợ học sinh khuyết tật vào các hoạt động. (Mã màu: 8B0000)\n`;
+    prompt += `- [ĐÃ BẬT] Chèn giải pháp "Giáo dục hòa nhập" hỗ trợ học sinh khuyết tật vào phần mục tiêu/nội dung hoạt động. (Mã màu: 8B0000)\n`;
   }
   if (options.foreignLang) {
-    prompt += `- [ĐÃ BẬT] Chèn thuật ngữ Tiếng Anh chuyên ngành (CLIL) vào các khái niệm chính.\n`;
+    prompt += `- [ĐÃ BẬT] Chèn thuật ngữ Tiếng Anh chuyên ngành (CLIL).\n`;
   }
   if (options.bilingual) {
     prompt += `- [ĐÃ BẬT] Chèn bản dịch tiếng Anh vào hoạt động Khởi động.\n`;
@@ -70,10 +69,10 @@ ${lessonContent}
 
   prompt += `
 --- ĐẦU RA BẮT BUỘC (JSON ARRAY) ---
-Trả về mảng JSON chứa các thao tác tìm và chèn:
+Trả về mảng JSON chứa danh sách các điểm mỏ neo cần chèn:
 [
   {
-    "target_text": "Đoạn văn bản gốc có thật nằm trong Mục tiêu bài hoặc Mục tiêu hoạt động để làm mỏ neo",
+    "target_text": "Copy CHÍNH XÁC một câu hoặc đoạn ngắn có thật nằm ngay tại dòng 'a) Mục tiêu:' của một hoạt động hoặc phần mục tiêu chung",
     "insert_text": "- Phát triển năng lực số (Mã): Nội dung chi tiết...",
     "color": "00008B"
   }
