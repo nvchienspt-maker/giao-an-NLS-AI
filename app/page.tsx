@@ -174,26 +174,26 @@ export default function Home() {
   return (
     <div className={`min-h-screen font-sans p-4 md:p-8 transition-colors duration-300 ${theme.bgMain} ${theme.textMain}`}>
       <header className={`flex flex-col md:flex-row justify-between items-center mb-8 border-b pb-4 gap-4 ${theme.borderHeader}`}>
-        <div className="flex-shrink-0">
-          <h1 className={`text-2xl font-bold flex items-center gap-3 ${theme.textTitle}`}>
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <FileText size={24} className="text-white" />
-            </div>
-            
-            <div>
-              <div>SOẠN GIÁO ÁN NĂNG LỰC SỐ - LITE</div>
+        <div className="flex-shrink-0 flex items-center gap-3">
+          <div className="bg-blue-600 p-2 rounded-lg text-white flex items-center justify-center">
+            <FileText size={24} />
+          </div>
+          
+          <div>
+            <h1 className={`text-2xl font-bold ${theme.textTitle}`}>
+              SOẠN GIÁO ÁN NĂNG LỰC SỐ - LITE
+            </h1>
 
-              {/* LINK BÊN DƯỚI */}
-              <a
-                href="https://nvc-khbd.vercel.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-normal text-blue-500 hover:text-blue-600 hover:underline transition-colors"
-              >
-                🔗 Bản đầy đủ (Đang phát triển)
-              </a>
-            </div>
-          </h1>
+            {/* LINK BÊN DƯỚI */}
+            <a
+              href="https://nvc-khbd.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-normal text-blue-500 hover:text-blue-600 hover:underline transition-colors inline-block mt-0.5"
+            >
+              🔗 Bản đầy đủ (Đang phát triển)
+            </a>
+          </div>
         </div>
 
         <div className="hidden md:flex flex-col items-center justify-center text-center flex-1">
@@ -353,12 +353,23 @@ export default function Home() {
 
       <footer className={`max-w-7xl mx-auto mt-12 pt-6 border-t flex flex-col md:flex-row justify-between items-center text-sm pb-8 ${isDarkMode ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'}`}>
         <p>
-          © {new Date().getFullYear()} Thiết kế & Phát triển bởi{" "}
+          © {new Date().getFullYear()} Thiết kế & Phát triển bởi{' '}
           <a href="https://chienzz.web.app" target="_blank" rel="noopener noreferrer" className="font-bold text-blue-500 hover:text-blue-600 hover:underline transition-colors">
-            NVC Spaces - https://chienzz.web.app - Zalo: 0975.702.250 - Nguyễn Văn Chiến
-          </a>.
+            NVC Spaces
+          </a>{' '}
+          - Zalo: 0975.702.250 (Nguyễn Văn Chiến).
         </p>
-        <p className="mt-2 md:mt-0">Công cụ tự động hóa tích hợp Năng lực số và AI theo chuẩn của Bộ GD&ĐT.</p>
+        <p className="mt-2 md:mt-0 flex items-center gap-1">
+          <span>Công cụ tự động hóa tích hợp Năng lực số và AI theo chuẩn của Bộ GD&ĐT.</span>
+          <a
+            href="https://nvc-khbd.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:underline font-medium ml-1"
+          >
+            🔗 Bản đầy đủ
+          </a>
+        </p>
       </footer>
 
       {/* Truyền isDarkMode sang cho Modal để đồng bộ màu sắc */}
