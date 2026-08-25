@@ -227,14 +227,14 @@ export default function Home() {
         {/* Thông tin người thiết kế (Khu vực giữa) */}
         <div className="hidden md:flex flex-col items-center justify-center text-center flex-1">
           <span className="text-sm font-bold text-blue-400 tracking-widest uppercase">
-            Phát triển bởi NVC Spaces -{" "}
+            Phát triển bởi -{" "}
             <a
               href="https://chienzz.web.app"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-blue-300 hover:underline transition-colors"
             >
-              https://chienzz.web.app
+              NVC Spaces
             </a>
           </span>
 
