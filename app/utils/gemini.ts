@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Định nghĩa kiểu dữ liệu cho options
 interface LessonOptions {
   ai: boolean;
   inclusive: boolean;
@@ -20,70 +19,45 @@ export async function generateLessonPlan(
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: modelName });
 
-  // 1. Khởi tạo Vai trò và Bối cảnh (System Prompt)
-  let prompt = `Bạn là một Chuyên gia Giáo dục, Thiết kế chương trình và Giáo dục hòa nhập xuất sắc. 
-Bối cảnh bài học: ${contextInfo}.
-
-Nhiệm vụ của bạn là phân tích, biên tập và nâng cấp giáo án dưới đây dựa trên các tiêu chí cụ thể được yêu cầu. Giữ nguyên cấu trúc các hoạt động chính của giáo án gốc nhưng tích hợp khéo léo các yếu tố mới vào từng bước (Khởi động, Hình thành kiến thức, Luyện tập, Vận dụng).
+  let prompt = `Bạn là một Chuyên gia Giáo dục. Nhiệm vụ của bạn là biên tập giáo án dưới đây theo các tiêu chí được yêu cầu. GIỮ NGUYÊN CẤU TRÚC, TIÊU ĐỀ của giáo án gốc.
+Bối cảnh: ${contextInfo}.
 
 --- NỘI DUNG GIÁO ÁN GỐC ---
 ${lessonContent}
 -----------------------------
 
 --- CÁC YÊU CẦU TÍCH HỢP BẮT BUỘC ---
+- BẤT KỲ phần nội dung nào liên quan đến "Năng lực số" (NLS) sẵn có hoặc bạn thêm vào, PHẢI được bọc trong thẻ HTML: <span style="color: #00008B; font-weight: bold;">Nội dung NLS</span> (Màu xanh dương tối).
 `;
 
-  // 2. Xử lý logic 4 Checkbox
   if (options.ai) {
-    prompt += `
-[1. TÍCH HỢP NĂNG LỰC TRÍ TUỆ NHÂN TẠO - AI]
-- Trong phần mục tiêu, thêm 1 gạch đầu dòng về năng lực AI mà học sinh đạt được.
-- Trong các hoạt động học tập, gợi ý giáo viên sử dụng công cụ AI nào (như ChatGPT, Gemini, Perplexity...) hoặc phương pháp nào để minh họa bài học hoặc hỗ trợ học sinh thực hành. Ghi chú rõ phần này bằng tiền tố "**[Năng lực AI]**".
-`;
+    prompt += `- Thêm nội dung hướng dẫn Năng lực AI vào giáo án. Phần năng lực AI này PHẢI được bọc trong thẻ HTML: <span style="color: #B8860B; font-weight: bold;">Nội dung Năng lực AI</span> (Màu vàng tối).\n`;
   }
 
   if (options.inclusive) {
-    prompt += `
-[2. GIÁO DỤC HÒA NHẬP (Dành cho học sinh khuyết tật)]
-- Dưới mỗi hoạt động dạy học, HÃY THÊM MỘT MỤC riêng có tên "**[Hỗ trợ Giáo dục Hòa nhập]**".
-- Tại mục này, cung cấp giải pháp sư phạm cụ thể cho 2 nhóm: 
-  + Học sinh khiếm thị/khiếm thính (VD: mô tả bằng lời, phụ đề, sử dụng thẻ xúc giác).
-  + Học sinh khuyết tật trí tuệ nhẹ hoặc rối loạn tập trung (VD: chia nhỏ lệnh, giảm tải nhận thức, hướng dẫn từng bước 1-1).
-`;
+    prompt += `- Thêm các giải pháp Giáo dục hòa nhập (hỗ trợ học sinh khuyết tật) vào các hoạt động. Phần này PHẢI được bọc trong thẻ HTML: <span style="color: #8B0000; font-weight: bold;">Nội dung Giáo dục hòa nhập</span> (Màu đỏ tối).\n`;
   }
 
   if (options.foreignLang) {
-    prompt += `
-[3. PHƯƠNG PHÁP CLIL (Năng lực Ngoại ngữ)]
-- Gắn kèm các thuật ngữ Tiếng Anh chuyên ngành (trong ngoặc đơn) ngay cạnh các khái niệm quan trọng bằng tiếng Việt xuyên suốt giáo án.
-- Cuối giáo án, tạo một "**Bảng Thuật ngữ (Glossary)**" nhỏ gồm 5-10 từ vựng Anh-Việt xuất hiện trong bài.
-`;
+    prompt += `- Tích hợp thuật ngữ Tiếng Anh (CLIL) bằng cách mở ngoặc đơn cạnh từ khóa tiếng Việt.\n`;
   }
 
   if (options.bilingual) {
-    prompt += `
-[4. HOẠT ĐỘNG SONG NGỮ VIỆT - ANH]
-- Hãy chọn DUY NHẤT phần "Hoạt động Khởi động (Warm-up)" hoặc một Trò chơi học tập để thiết kế hoàn toàn dưới dạng Song ngữ (Tiếng Việt kèm bản dịch Tiếng Anh in nghiêng ngay bên dưới). 
-- Các câu khẩu lệnh của Giáo viên (Teacher's script) trong phần này phải có cả Tiếng Anh để giáo viên dễ dàng sử dụng trên lớp.
-`;
+    prompt += `- Chọn 1 hoạt động (VD: Khởi động) để dịch thành song ngữ Việt - Anh.\n`;
   }
 
-  if (!options.ai && !options.inclusive && !options.foreignLang && !options.bilingual) {
-     prompt += "- Bạn chỉ cần định dạng lại giáo án gốc cho chuẩn sư phạm, trình bày đẹp mắt và logic hơn mà không cần thêm nội dung đặc thù.\n";
-  }
-
-  // 3. Quy tắc đầu ra
   prompt += `
---- QUY TẮC TRÌNH BÀY ĐẦU RA ---
-- Trả về kết quả hoàn toàn bằng Markdown định dạng đẹp.
-- Không in ra các thẻ code block như \`\`\`markdown, chỉ in nội dung trực tiếp.
-- Làm nổi bật (in đậm) các phần được thêm mới để giáo viên dễ nhận biết.
+--- QUY TẮC ĐẦU RA (RẤT QUAN TRỌNG) ---
+- TRẢ VỀ TOÀN BỘ KẾT QUẢ BẰNG MÃ HTML (Dùng <h1>, <h2>, <p>, <ul>, <li>, <table>...).
+- TUYỆT ĐỐI KHÔNG sử dụng Markdown. KHÔNG bọc kết quả trong \`\`\`html. Chỉ trả về mã HTML thuần túy để tôi có thể render trực tiếp lên trình duyệt và xuất file Word.
 `;
 
-  // 4. Gọi API
   try {
     const result = await model.generateContent(prompt);
-    return result.response.text();
+    let text = result.response.text();
+    // Dọn dẹp thẻ code block nếu AI vẫn lỡ in ra
+    text = text.replace(/```html/g, '').replace(/```/g, '').trim();
+    return text;
   } catch (err: any) {
     throw new Error(err.message || "Lỗi khi kết nối với Gemini API.");
   }

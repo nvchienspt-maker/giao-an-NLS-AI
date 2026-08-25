@@ -29,7 +29,7 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
     setTempModel(model || 'gemini-pro');
   }, [apiKey, model, isOpen]);
 
-  // Logic tự động quét Key và chọn Model
+  // Tự động quét API Key và chốt Model
   useEffect(() => {
     if (!tempKey || tempKey.trim().length < 20) {
         setAvailableModels([]);
@@ -40,7 +40,7 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
 
     const fetchModels = async () => {
       setIsLoading(true);
-      setStatusMsg('Đang kiểm tra API Key...');
+      setStatusMsg('Đang quét danh sách Model khả dụng...');
       setIsError(false);
       
       try {
@@ -55,7 +55,6 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
         }
 
         if (data.models) {
-          // Lọc các model hỗ trợ tạo văn bản
           const validModels = data.models.filter((m: any) => 
             m.supportedGenerationMethods?.includes('generateContent')
           ).map((m: any) => ({
@@ -65,27 +64,25 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
 
           setAvailableModels(validModels);
 
-          // Thuật toán chọn Model tự động: Ưu tiên gemini-pro (ổn định nhất)
           if (validModels.length > 0) {
-             const bestModel = validModels.find((m: any) => m.name === 'gemini-pro') || validModels[0];
+             // Ưu tiên chọn gemini-pro để đảm bảo tương thích mọi API Key
+             const bestModel = validModels.find((m: any) => m.name === 'gemini-pro') 
+                            || validModels[0];
+             
              setTempModel(bestModel.name);
              setIsError(false);
-             setStatusMsg(`✅ Hợp lệ! Đã tự động chọn: ${bestModel.displayName}`);
+             setStatusMsg(`✅ Hợp lệ! Tự động chọn: ${bestModel.displayName}`);
           }
         }
       } catch (err: any) {
          setIsError(true);
-         setStatusMsg('Lỗi mạng, không thể kiểm tra Key.');
+         setStatusMsg('Lỗi mạng, không thể kết nối tới máy chủ AI.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Đợi người dùng copy/dán xong (600ms) rồi mới chạy nền
-    const timeoutId = setTimeout(() => {
-        fetchModels();
-    }, 600);
-
+    const timeoutId = setTimeout(() => fetchModels(), 600);
     return () => clearTimeout(timeoutId);
   }, [tempKey]);
 
@@ -114,8 +111,6 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
             className={`w-full bg-[#11141c] border ${isError ? 'border-red-500' : 'border-gray-600'} rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition`}
             placeholder="Dán AIzaSy... vào đây"
           />
-          
-          {/* Trạng thái xác thực tự động hiển thị bên dưới ô nhập */}
           <div className="h-6 flex items-center">
             {isLoading && <p className="text-xs text-blue-400 flex items-center gap-2"><Loader2 size={12} className="animate-spin"/> {statusMsg}</p>}
             {!isLoading && statusMsg && (
@@ -126,9 +121,8 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
           </div>
         </div>
         
-        {/* Dropdown Model đã được làm mờ/disabled nếu chưa có Key chuẩn */}
         <div className="space-y-2 mb-8">
-          <label className="text-sm font-medium text-gray-300">Model đang dùng (Hệ thống tự động chọn)</label>
+          <label className="text-sm font-medium text-gray-300">Model đang dùng</label>
           <select 
             value={tempModel} 
             onChange={(e) => setTempModel(e.target.value)}
@@ -148,7 +142,7 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
         <button 
           onClick={handleSave}
           disabled={!tempKey || isError || isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-blue-900/20"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
           Lưu & Bắt đầu sử dụng
         </button>
