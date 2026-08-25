@@ -88,35 +88,47 @@ export async function patchDocx(originalFile: File, instructions: Instruction[])
         }
       }
     } 
-    // 3. CHÈN VÀO ĐÚNG HOẠT ĐỘNG (KHỞI ĐỘNG, HOẠT ĐỘNG 1, 2, 3, 4...)
+    // 3. CHÈN VÀO ĐÚNG HOẠT ĐỘNG (NGAY DƯỚI DÒNG "a) Mục tiêu")
     else if (instruction.position === 'hoat_dong' && instruction.activity_keyword) {
+      // Chuẩn hóa từ khóa (Ví dụ: "hoạt động 1", "khởi động")
       const actKey = normalize(instruction.activity_keyword);
       let inserted = false;
-      let passedMainGoals = false;
 
-      // Lần 1: Quét an toàn (bỏ qua phần mục tiêu chung ở đầu để tránh chèn nhầm)
+      // Quét toàn bộ văn bản từ trên xuống dưới
       for (let i = 0; i < chunks.length; i++) {
+        // Loại bỏ mọi thẻ HTML/XML ẩn của Word để đọc chữ thô
         const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
         
-        // Đánh dấu khi đã qua phần Mục tiêu chung, vào phần thân bài
-        if (text.includes('tiến trình dạy học') || text.includes('hoạt động dạy học') || text.includes('iii. tiến trình') || text.includes('ii. thiết bị')) {
-          passedMainGoals = true;
-        }
-
-        if (passedMainGoals && text.includes(actKey)) {
-          // Khi thấy "hoạt động 1", quét tiếp tối đa 30 dòng bên dưới để tìm chữ "mục tiêu" của nó
-          const endIndex = Math.min(i + 30, chunks.length);
+        // BƯỚC 1: Tìm xem dòng này có chứa tên hoạt động AI chỉ định không
+        if (text.includes(actKey)) {
+          
+          // BƯỚC 2: Khi đã thấy tên hoạt động, quét xuống tối đa 20 dòng bên dưới
+          const endIndex = Math.min(i + 20, chunks.length);
           for (let j = i; j < endIndex; j++) {
             const textAhead = normalize(chunks[j].replace(/<[^>]+>/g, ''));
-            if (textAhead.includes('a) mục tiêu') || textAhead.includes('a. mục tiêu') || textAhead.includes('1. mục tiêu') || textAhead.includes('- mục tiêu') || textAhead.includes('+ mục tiêu') || (textAhead.includes('mục tiêu:') && !textAhead.includes('chung'))) {
+            
+            // BƯỚC 3: Bắt chính xác dòng chứa chữ mục tiêu của hoạt động đó
+            if (textAhead.includes('a) mục tiêu') || 
+                textAhead.includes('a. mục tiêu') || 
+                textAhead.includes('1. mục tiêu') || 
+                textAhead.includes('- mục tiêu') || 
+                textAhead.includes('+ mục tiêu') || 
+                (textAhead.includes('mục tiêu:') && !textAhead.includes('chung'))) {
+              
+              // CHÈN VÀO NGAY BÊN DƯỚI DÒNG ĐÓ
               chunks[j] = chunks[j] + '</w:p>' + xmlFragment;
               inserted = true;
-              break; 
+              break; // Chèn xong thì thoát vòng lặp quét dòng
             }
           }
         }
-        if (inserted) break;
+        
+        // Nếu đã chèn thành công cho hoạt động này, thoát vòng lặp quét văn bản để AI chuyển sang lệnh tiếp theo
+        if (inserted) {
+            break;
+        }
       }
+    
 
       // Lần 2 (Dự phòng): Nếu lần 1 tìm trượt do giáo án không có chữ "Tiến trình dạy học", sẽ quét lại từ đầu
       if (!inserted) {
