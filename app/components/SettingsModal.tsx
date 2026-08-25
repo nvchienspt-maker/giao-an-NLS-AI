@@ -26,10 +26,9 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
 
   useEffect(() => {
     setTempKey(apiKey);
-    setTempModel(model || 'gemini-pro');
+    setTempModel(model || 'gemini-3.5-flash');
   }, [apiKey, model, isOpen]);
 
-  // Tự động quét API Key và chốt Model
   useEffect(() => {
     if (!tempKey || tempKey.trim().length < 20) {
         setAvailableModels([]);
@@ -40,7 +39,7 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
 
     const fetchModels = async () => {
       setIsLoading(true);
-      setStatusMsg('Đang quét danh sách Model khả dụng...');
+      setStatusMsg('Đang kiểm tra API Key...');
       setIsError(false);
       
       try {
@@ -55,8 +54,11 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
         }
 
         if (data.models) {
+          // LỌC CỨNG: Bỏ các model 1.5 và 2.5 bị Google khóa
           const validModels = data.models.filter((m: any) => 
-            m.supportedGenerationMethods?.includes('generateContent')
+            m.supportedGenerationMethods?.includes('generateContent') &&
+            !m.name.includes('1.5') && 
+            !m.name.includes('2.5')
           ).map((m: any) => ({
             name: m.name.replace('models/', ''),
             displayName: m.displayName
@@ -65,24 +67,32 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
           setAvailableModels(validModels);
 
           if (validModels.length > 0) {
-             // Ưu tiên chọn gemini-pro để đảm bảo tương thích mọi API Key
-             const bestModel = validModels.find((m: any) => m.name === 'gemini-pro') 
+             // Ưu tiên chọn 3.5-flash hoặc 3.6-flash
+             const bestModel = validModels.find((m: any) => m.name.includes('3.5-flash')) 
+                            || validModels.find((m: any) => m.name.includes('3.6-flash'))
+                            || validModels.find((m: any) => m.name === 'gemini-pro')
                             || validModels[0];
              
              setTempModel(bestModel.name);
              setIsError(false);
-             setStatusMsg(`✅ Hợp lệ! Tự động chọn: ${bestModel.displayName}`);
+             setStatusMsg(`✅ Đã tự động nhận diện: ${bestModel.displayName}`);
+          } else {
+             setIsError(true);
+             setStatusMsg('API Key không hỗ trợ các model thế hệ mới.');
           }
         }
       } catch (err: any) {
          setIsError(true);
-         setStatusMsg('Lỗi mạng, không thể kết nối tới máy chủ AI.');
+         setStatusMsg('Lỗi mạng, không thể kết nối tới Google AI.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    const timeoutId = setTimeout(() => fetchModels(), 600);
+    const timeoutId = setTimeout(() => {
+        fetchModels();
+    }, 600);
+
     return () => clearTimeout(timeoutId);
   }, [tempKey]);
 
@@ -122,7 +132,7 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
         </div>
         
         <div className="space-y-2 mb-8">
-          <label className="text-sm font-medium text-gray-300">Model đang dùng</label>
+          <label className="text-sm font-medium text-gray-300">Model đang dùng (Tự động)</label>
           <select 
             value={tempModel} 
             onChange={(e) => setTempModel(e.target.value)}
@@ -142,7 +152,7 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
         <button 
           onClick={handleSave}
           disabled={!tempKey || isError || isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-blue-900/20"
         >
           Lưu & Bắt đầu sử dụng
         </button>

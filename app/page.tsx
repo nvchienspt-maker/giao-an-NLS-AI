@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, FileText, Loader2, Cpu, HeartHandshake, Globe, Languages, Download } from 'lucide-react';
 import SettingsModal from './components/SettingsModal';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -8,9 +8,8 @@ import { extractTextFromFile } from './utils/fileReader';
 
 export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Đổi key để dọn cache cũ
-  const [apiKey, setApiKey] = useLocalStorage('gemini_api_key_v5', '');
-  const [model, setModel] = useLocalStorage('gemini_model_v5', 'gemini-pro');
+  const [apiKey, setApiKey] = useLocalStorage('gemini_api_key_v6', '');
+  const [model, setModel] = useLocalStorage('gemini_model_v6', 'gemini-3.5-flash');
   
   const [subject, setSubject] = useState('Tin học');
   const [grade, setGrade] = useState('Lớp 10');
@@ -24,6 +23,7 @@ export default function Home() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [progressText, setProgressText] = useState('');
   const [result, setResult] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,35 +39,83 @@ export default function Home() {
     setIsLoading(true);
     setResult('');
     
+    // Khởi tạo danh sách các tiến trình dựa vào tùy chọn
+    const steps = [
+      "Đang trích xuất dữ liệu từ tệp gốc...",
+      "Đang gửi dữ liệu và bối cảnh môn học tới AI...",
+      "AI đang phân tích và cấu trúc lại Kế hoạch bài dạy...",
+      options.ai ? "Đang tích hợp Năng lực Trí tuệ nhân tạo (Màu vàng)..." : "",
+      options.inclusive ? "Đang bổ sung phương pháp Giáo dục hòa nhập (Màu đỏ)..." : "",
+      options.foreignLang ? "Đang gắn thuật ngữ chuyên ngành (CLIL)..." : "",
+      options.bilingual ? "Đang tạo phân đoạn Song ngữ Việt - Anh..." : "",
+      "Đang rà soát và định dạng lại giao diện kết quả..."
+    ].filter(Boolean); // Bỏ các chuỗi rỗng
+
+    let stepIndex = 0;
+    setProgressText(steps[0]);
+
+    // Tạo hiệu ứng nhảy tiến trình mỗi 2 giây
+    const progressInterval = setInterval(() => {
+      stepIndex++;
+      if (stepIndex < steps.length) {
+        setProgressText(steps[stepIndex]);
+      }
+    }, 2500);
+    
     try {
       const textContent = await extractTextFromFile(file);
       const contextInfo = `Môn học: ${subject}, Khối lớp: ${grade}`;
       const aiResponse = await generateLessonPlan(apiKey, model, textContent, options, contextInfo);
+      
+      clearInterval(progressInterval);
+      setProgressText('Hoàn tất!');
       setResult(aiResponse);
     } catch (error: any) {
+      clearInterval(progressInterval);
       alert(`Có lỗi xảy ra: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Hàm xuất file Word từ HTML
   const exportToWord = () => {
     if (!result) return;
-    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Giáo án</title></head><body>";
+    
+    // Gói kết quả vào cấu trúc HTML có hỗ trợ Word Encoding
+    const header = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+            xmlns:w='urn:schemas-microsoft-com:office:word' 
+            xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>Giáo án</title>
+        <style>
+          body { font-family: 'Times New Roman', serif; font-size: 14pt; line-height: 1.5; }
+          h1, h2, h3 { color: #333; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 10px; }
+          table, th, td { border: 1px solid black; padding: 8px; }
+        </style>
+      </head>
+      <body>
+    `;
     const footer = "</body></html>";
     const htmlContent = document.getElementById("ai-result-content")?.innerHTML || "";
     
     const sourceHTML = header + htmlContent + footer;
-    const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-    
+    const blob = new Blob(['\ufeff', sourceHTML], {
+      type: 'application/msword'
+    });
+
+    const url = URL.createObjectURL(blob);
     const fileDownload = document.createElement("a");
     document.body.appendChild(fileDownload);
-    fileDownload.href = source;
-    // Xuất định dạng .doc để Microsoft Word tự động chuyển thể CSS HTML sang màu sắc đoạn văn
-    fileDownload.download = `Giao_An_Tich_Hop_${subject}_${grade}.doc`;
+    fileDownload.href = url;
+    
+    // Xuất ra file .doc (Word nhận diện CSS màu Xanh, Vàng, Đỏ một cách hoàn hảo)
+    fileDownload.download = `Giao_An_${subject}_${grade}.doc`;
     fileDownload.click();
     document.body.removeChild(fileDownload);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -123,7 +171,7 @@ export default function Home() {
                  {file ? (
                    <div className="flex flex-col">
                       <span className="text-gray-300 text-sm truncate">{file.name}</span>
-                      <span className="text-green-500 text-sm flex items-center gap-1 mt-1"><FileText size={14}/> Sẵn sàng</span>
+                      <span className="text-green-500 text-sm flex items-center gap-1 mt-1"><FileText size={14}/> Đã tải lên</span>
                    </div>
                  ) : <span className="text-gray-500 text-sm">Chưa có tệp nào được chọn (.docx, .pdf)</span>}
                </div>
@@ -135,18 +183,36 @@ export default function Home() {
              <div className="space-y-3">
                 <label className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer ${options.ai ? 'border-yellow-600 bg-yellow-600/10' : 'border-gray-700 hover:bg-gray-800'}`}>
                   <input type="checkbox" className="mt-1" checked={options.ai} onChange={e => setOptions({...options, ai: e.target.checked})} />
-                  <div><p className="font-medium text-yellow-500">Thêm năng lực trí tuệ nhân tạo (Màu vàng tối)</p></div>
+                  <div>
+                     <p className="font-medium text-yellow-500 flex items-center gap-2"><Cpu size={16}/> Thêm năng lực trí tuệ nhân tạo vào giáo án</p>
+                     <p className="text-xs text-gray-400 mt-1">Được làm nổi bật bằng <span className="text-yellow-600 font-bold">Màu Vàng Tối</span></p>
+                  </div>
                 </label>
                 <label className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer ${options.inclusive ? 'border-red-600 bg-red-600/10' : 'border-gray-700 hover:bg-gray-800'}`}>
                   <input type="checkbox" className="mt-1" checked={options.inclusive} onChange={e => setOptions({...options, inclusive: e.target.checked})} />
-                  <div><p className="font-medium text-red-500">Thêm giải pháp giáo dục hòa nhập (Màu đỏ tối)</p></div>
+                  <div>
+                     <p className="font-medium text-red-500 flex items-center gap-2"><HeartHandshake size={16}/> Thêm giải pháp giáo dục hòa nhập</p>
+                     <p className="text-xs text-gray-400 mt-1">Được làm nổi bật bằng <span className="text-red-700 font-bold">Màu Đỏ Tối</span></p>
+                  </div>
                 </label>
-                {/* Giữ nguyên checkbox 3 & 4 */}
+                <label className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer ${options.foreignLang ? 'border-emerald-500 bg-emerald-500/10' : 'border-gray-700 hover:bg-gray-800'}`}>
+                  <input type="checkbox" className="mt-1" checked={options.foreignLang} onChange={e => setOptions({...options, foreignLang: e.target.checked})} />
+                  <div><p className="font-medium text-emerald-400 flex items-center gap-2"><Globe size={16}/> Tích hợp năng lực ngoại ngữ (CLIL)</p></div>
+                </label>
+                <label className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer ${options.bilingual ? 'border-teal-500 bg-teal-500/10' : 'border-gray-700 hover:bg-gray-800'}`}>
+                  <input type="checkbox" className="mt-1" checked={options.bilingual} onChange={e => setOptions({...options, bilingual: e.target.checked})} />
+                  <div><p className="font-medium text-teal-400 flex items-center gap-2"><Languages size={16}/> Tạo song ngữ Việt - Anh một phần giáo án</p></div>
+                </label>
              </div>
           </section>
 
-          <button onClick={handleGenerate} disabled={isLoading} className="w-full bg-[#1c5dfd] hover:bg-blue-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
-            {isLoading ? <><Loader2 className="animate-spin" /> Đang xử lý dữ liệu với AI...</> : 'Tạo Giáo Án'}
+          <button onClick={handleGenerate} disabled={isLoading} className="w-full bg-[#1c5dfd] hover:bg-blue-600 text-white font-bold py-4 rounded-xl flex flex-col items-center justify-center transition-all disabled:opacity-80">
+            {isLoading ? (
+              <>
+                <div className="flex items-center gap-2 mb-1"><Loader2 className="animate-spin" size={20} /> Đang xử lý...</div>
+                <span className="text-xs text-blue-200">{progressText}</span>
+              </>
+            ) : 'Tạo Giáo Án'}
           </button>
         </div>
 
@@ -155,12 +221,11 @@ export default function Home() {
             <div className="bg-[#1e2330] rounded-xl border border-green-500/30 overflow-hidden flex flex-col h-full">
               <div className="bg-green-500/10 p-4 border-b border-green-500/20 flex justify-between items-center">
                 <h3 className="font-bold text-green-400">Giáo án đã hoàn thiện</h3>
-                <button onClick={exportToWord} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm transition">
-                  <Download size={16} /> Tải file Word
+                <button onClick={exportToWord} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition shadow-lg">
+                  <Download size={16} /> Tải file Word (.doc)
                 </button>
               </div>
               <div className="p-6 overflow-y-auto max-h-[800px] bg-white text-black custom-scrollbar">
-                {/* Render HTML trực tiếp từ Gemini */}
                 <div id="ai-result-content" dangerouslySetInnerHTML={{ __html: result }} className="prose max-w-none" />
               </div>
             </div>
