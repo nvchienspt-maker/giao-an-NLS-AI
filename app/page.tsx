@@ -116,7 +116,35 @@ export default function Home() {
 
   const exportToWord = () => {
     if (!result) return;
+
+    // 1. TIỀN XỬ LÝ HTML ĐỂ CHỐNG VỠ KHUNG TRONG MS WORD
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = document.getElementById("ai-result-content")?.innerHTML || "";
+
+    // Fix lỗi vỡ ảnh: Ép cứng thuộc tính width trực tiếp vào thẻ img
+    const images = tempDiv.getElementsByTagName('img');
+    for (let i = 0; i < images.length; i++) {
+      images[i].setAttribute('width', '100%'); // Word tôn trọng thuộc tính này hơn CSS
+      images[i].style.maxWidth = '100%';
+      images[i].style.height = 'auto';
+    }
+
+    // Fix lỗi vỡ bảng: Ép bảng cố định layout và bẻ dòng văn bản
+    const tables = tempDiv.getElementsByTagName('table');
+    for (let i = 0; i < tables.length; i++) {
+      tables[i].style.width = '100%';
+      tables[i].style.tableLayout = 'fixed';
+    }
     
+    // Gán CSS riêng cho cột (td, th) để chữ không bị tràn
+    const cells = tempDiv.querySelectorAll('td, th');
+    for (let i = 0; i < cells.length; i++) {
+       (cells[i] as HTMLElement).style.wordWrap = 'break-word';
+    }
+
+    const processedHTML = tempDiv.innerHTML;
+    
+    // 2. GÓI VÀO CẤU TRÚC WORD (Bổ sung bộ CSS chống tràn)
     const header = `
       <html xmlns:v="urn:schemas-microsoft-com:vml"
             xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -130,19 +158,17 @@ export default function Home() {
           @page WordSection1 { size: 21.0cm 29.7cm; margin: 2.0cm; }
           div.WordSection1 { page: WordSection1; }
           body { font-family: 'Times New Roman', serif; font-size: 14pt; line-height: 1.5; }
-          /* Đảm bảo hình ảnh không bị tràn lề trong Word */
-          img { max-width: 100%; height: auto; } 
-          table { width: 100%; border-collapse: collapse; }
-          table, td, th { border: 1pt solid black; padding: 5px; }
+          img { width: 100%; max-width: 100%; height: auto; } 
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 10px; }
+          table, td, th { border: 1pt solid black; padding: 5px; vertical-align: top; word-break: break-word; }
         </style>
       </head>
       <body>
         <div class="WordSection1">
     `;
     const footer = "</div></body></html>";
-    const htmlContent = document.getElementById("ai-result-content")?.innerHTML || "";
     
-    const sourceHTML = header + htmlContent + footer;
+    const sourceHTML = header + processedHTML + footer;
     const blob = new Blob(['\ufeff', sourceHTML], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     
