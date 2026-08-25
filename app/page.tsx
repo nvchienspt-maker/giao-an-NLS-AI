@@ -465,9 +465,26 @@ export default function Home() {
 
       <SettingsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} apiKey={apiKey} setApiKey={setApiKey} model={model} setModel={setModel} />
    {/* KHU VỰC CHÂN TRANG (FOOTER) */}
-      <footer className="max-w-7xl mx-auto mt-12 pt-6 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center text-gray-500 text-sm pb-8">
-        <p>© {new Date().getFullYear()} Thiết kế & Phát triển bởi <b>NVC Space</b>.</p>
-        <p className="mt-2 md:mt-0">Công cụ tự động hóa tích hợp Năng lực số và AI theo chuẩn của Bộ GD&ĐT.</p>
+     <footer className="max-w-7xl mx-auto mt-12 pt-6 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center text-gray-500 text-sm pb-8">
+  
+        <p>
+          © {new Date().getFullYear()} Thiết kế & Phát triển bởi{" "}
+          
+          <a
+            href="https://chienzz.web.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-bold text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+          >
+            NVC Spaces
+          </a>
+          .
+        </p>
+
+        <p className="mt-2 md:mt-0">
+          Công cụ tự động hóa tích hợp Năng lực số và AI theo chuẩn của Bộ GD&ĐT.
+        </p>
+
       </footer>
 
       <SettingsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} apiKey={apiKey} setApiKey={setApiKey} model={model} setModel={setModel} />
