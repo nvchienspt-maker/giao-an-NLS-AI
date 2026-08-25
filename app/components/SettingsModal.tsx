@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, AlertCircle } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -19,139 +19,138 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
   const [tempKey, setTempKey] = useState(apiKey);
   const [tempModel, setTempModel] = useState(model);
   
-  // Các state quản lý tự động tải Model
   const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
-  const [fetchError, setFetchError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
+  const [isError, setIsError] = useState(false);
 
-  // Đồng bộ dữ liệu khi modal được mở
   useEffect(() => {
     setTempKey(apiKey);
-    setTempModel(model);
+    setTempModel(model || 'gemini-pro');
   }, [apiKey, model, isOpen]);
 
-  // Logic tự động lấy danh sách Model khi người dùng nhập API Key
+  // Logic tự động quét Key và chọn Model
   useEffect(() => {
-    if (!tempKey) {
+    if (!tempKey || tempKey.trim().length < 20) {
         setAvailableModels([]);
+        setStatusMsg('');
+        setIsError(false);
         return;
     }
 
     const fetchModels = async () => {
-      setIsLoadingModels(true);
-      setFetchError('');
+      setIsLoading(true);
+      setStatusMsg('Đang kiểm tra API Key...');
+      setIsError(false);
+      
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${tempKey}`);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${tempKey.trim()}`);
         const data = await res.json();
         
         if (data.error) {
-          setFetchError(data.error.message);
+          setIsError(true);
+          setStatusMsg(data.error.message);
           setAvailableModels([]);
           return;
         }
 
         if (data.models) {
-          // Chỉ lọc lấy các model hỗ trợ tạo văn bản (generateContent)
+          // Lọc các model hỗ trợ tạo văn bản
           const validModels = data.models.filter((m: any) => 
-            m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
-          );
-          
-          const formattedModels = validModels.map((m: any) => ({
-            name: m.name.replace('models/', ''), // Bỏ tiền tố models/ để dùng chuẩn cho SDK
+            m.supportedGenerationMethods?.includes('generateContent')
+          ).map((m: any) => ({
+            name: m.name.replace('models/', ''),
             displayName: m.displayName
           }));
 
-          setAvailableModels(formattedModels);
+          setAvailableModels(validModels);
 
-          // Tự động chọn model nếu chưa có hoặc model cũ không tồn tại trong danh sách mới
-          if (formattedModels.length > 0) {
-             const currentExists = formattedModels.find((m: any) => m.name === tempModel);
-             if (!currentExists) {
-                 // Ưu tiên tự động chọn gemini-pro nếu có, nếu không thì chọn model đầu tiên của danh sách
-                 const proModel = formattedModels.find((m: any) => m.name.includes('gemini-pro'));
-                 setTempModel(proModel ? proModel.name : formattedModels[0].name);
-             }
+          // Thuật toán chọn Model tự động: Ưu tiên gemini-pro (ổn định nhất)
+          if (validModels.length > 0) {
+             const bestModel = validModels.find((m: any) => m.name === 'gemini-pro') || validModels[0];
+             setTempModel(bestModel.name);
+             setIsError(false);
+             setStatusMsg(`✅ Hợp lệ! Đã tự động chọn: ${bestModel.displayName}`);
           }
         }
       } catch (err: any) {
-         setFetchError('Lỗi kết nối mạng khi tải danh sách Model.');
+         setIsError(true);
+         setStatusMsg('Lỗi mạng, không thể kiểm tra Key.');
       } finally {
-        setIsLoadingModels(false);
+        setIsLoading(false);
       }
     };
 
-    // Sử dụng debounce 800ms để tránh gọi API liên tục khi đang thao tác copy/gõ phím
+    // Đợi người dùng copy/dán xong (600ms) rồi mới chạy nền
     const timeoutId = setTimeout(() => {
         fetchModels();
-    }, 800);
+    }, 600);
 
     return () => clearTimeout(timeoutId);
-  }, [tempKey]); // Chạy lại logic mỗi khi tempKey thay đổi
+  }, [tempKey]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
-    setApiKey(tempKey);
+    setApiKey(tempKey.trim());
     setModel(tempModel);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-[#1e2330] w-full max-w-md rounded-xl p-6 text-white shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#1e2330] w-full max-w-md rounded-xl p-6 text-white shadow-2xl border border-gray-700">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold flex items-center gap-2">
-            Thiết lập Model & API Key
-          </h3>
-          <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-white" /></button>
+          <h3 className="text-xl font-semibold flex items-center gap-2">Thiết lập AI</h3>
+          <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-white transition" /></button>
         </div>
 
-        {/* Input nhập Key được đưa lên trên */}
-        <div className="space-y-2 mb-6">
-          <p className="text-sm text-gray-300">Nhập Gemini API Key của bạn</p>
+        <div className="space-y-3 mb-6">
+          <label className="text-sm font-medium text-gray-300">Nhập API Key của bạn</label>
           <input 
             type="password" 
             value={tempKey}
             onChange={(e) => setTempKey(e.target.value)}
-            className={`w-full bg-[#11141c] border ${fetchError ? 'border-red-500' : 'border-gray-600'} rounded p-3 text-white focus:outline-none focus:border-blue-500`}
-            placeholder="AIzaSy..."
+            className={`w-full bg-[#11141c] border ${isError ? 'border-red-500' : 'border-gray-600'} rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition`}
+            placeholder="Dán AIzaSy... vào đây"
           />
-          {fetchError && <p className="text-xs text-red-400 mt-1">{fetchError}</p>}
+          
+          {/* Trạng thái xác thực tự động hiển thị bên dưới ô nhập */}
+          <div className="h-6 flex items-center">
+            {isLoading && <p className="text-xs text-blue-400 flex items-center gap-2"><Loader2 size={12} className="animate-spin"/> {statusMsg}</p>}
+            {!isLoading && statusMsg && (
+                <p className={`text-xs flex items-center gap-1 ${isError ? 'text-red-400' : 'text-green-400'}`}>
+                    {isError ? <AlertCircle size={12}/> : null} {statusMsg}
+                </p>
+            )}
+          </div>
         </div>
         
-        {/* Danh sách Model tự động */}
-        <div className="space-y-4 mb-6">
-          <p className="text-sm text-gray-300 flex items-center gap-2">
-            Chọn Model AI 
-            {isLoadingModels && <Loader2 size={14} className="animate-spin text-blue-400" />}
-          </p>
-          
-          <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-2">
-              {availableModels.length > 0 ? (
-                  availableModels.map((m) => (
-                     <div 
-                        key={m.name}
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${tempModel === m.name ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600 hover:border-gray-500'}`}
-                        onClick={() => setTempModel(m.name)}
-                      >
-                        <div className="font-medium text-blue-400 text-sm">{m.displayName}</div>
-                        <div className="text-xs text-gray-400 mt-1">{m.name}</div>
-                      </div>
-                  ))
-              ) : (
-                  <p className="text-sm text-gray-500 italic p-3 border border-dashed border-gray-700 rounded-lg text-center bg-[#11141c]">
-                      {isLoadingModels ? 'Đang tải danh sách...' : 'Vui lòng nhập API Key hợp lệ để tải danh sách Model.'}
-                  </p>
-              )}
-          </div>
+        {/* Dropdown Model đã được làm mờ/disabled nếu chưa có Key chuẩn */}
+        <div className="space-y-2 mb-8">
+          <label className="text-sm font-medium text-gray-300">Model đang dùng (Hệ thống tự động chọn)</label>
+          <select 
+            value={tempModel} 
+            onChange={(e) => setTempModel(e.target.value)}
+            disabled={availableModels.length === 0}
+            className="w-full bg-[#11141c] border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50 appearance-none"
+          >
+            {availableModels.length > 0 ? (
+              availableModels.map(m => (
+                <option key={m.name} value={m.name}>{m.displayName} ({m.name})</option>
+              ))
+            ) : (
+              <option>{tempModel}</option>
+            )}
+          </select>
         </div>
 
         <button 
           onClick={handleSave}
-          disabled={!tempKey || availableModels.length === 0}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={!tempKey || isError || isLoading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-blue-900/20"
         >
-          Lưu cấu hình
+          Lưu & Bắt đầu sử dụng
         </button>
       </div>
     </div>

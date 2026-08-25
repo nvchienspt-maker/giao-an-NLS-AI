@@ -8,9 +8,8 @@ import { extractTextFromFile } from './utils/fileReader';
 
 export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [apiKey, setApiKey] = useLocalStorage('gemini_api_key', '');
-  // Đổi key lưu trữ và model mặc định
-  const [model, setModel] = useLocalStorage('gemini_model_v2', 'gemini-pro');
+  const [apiKey, setApiKey] = useLocalStorage('gemini_api_key_v3', '');
+const [model, setModel] = useLocalStorage('gemini_model_v3', 'gemini-pro');
   
   // Trạng thái cấu hình giáo án
   const [subject, setSubject] = useState('Tin học');
