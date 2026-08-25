@@ -6,57 +6,58 @@ interface Instruction {
   color: string;
 }
 
+// Hàm mã hóa ký tự đặc biệt để không làm hỏng cấu trúc XML của Word
+function escapeXml(unsafe: string) {
+    return unsafe.replace(/[<>&'"]/g, function (c) {
+        switch (c) {
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '&': return '&amp;';
+            case '\'': return '&apos;';
+            case '"': return '&quot;';
+            default: return c;
+        }
+    });
+}
+
 export async function patchDocx(originalFile: File, instructions: Instruction[]): Promise<Blob> {
   const arrayBuffer = await originalFile.arrayBuffer();
   const zip = await JSZip.loadAsync(arrayBuffer);
   
-  // Trích xuất mã lõi cấu trúc của Word
   const xmlString = await zip.file("word/document.xml")?.async("text");
   if (!xmlString) throw new Error("Không thể đọc cấu trúc file Word");
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xmlString, "application/xml");
-  const paragraphs = Array.from(doc.getElementsByTagName("w:p"));
-
-  // Hàm chuẩn hóa chuỗi để so sánh chính xác (bỏ khoảng trắng thừa, đưa về chữ thường)
   const normalize = (str: string) => str.replace(/\s+/g, ' ').trim().toLowerCase();
+
+  // TÁCH CHUỖI AN TOÀN: Cắt file XML theo từng thẻ đóng đoạn văn </w:p>
+  let chunks = xmlString.split('</w:p>');
 
   for (const instruction of instructions) {
     const target = normalize(instruction.target_text);
     if (!target) continue;
 
-    for (let i = 0; i < paragraphs.length; i++) {
-      const p = paragraphs[i];
-      // Gộp tất cả các chữ trong 1 đoạn văn (paragraph) lại để đọc
-      const textNodes = Array.from(p.getElementsByTagName("w:t"));
-      const pText = normalize(textNodes.map(n => n.textContent || "").join(""));
+    // Mã hóa text an toàn trước khi tiêm vào XML
+    const safeInsertText = escapeXml(instruction.insert_text);
+    const colorVal = instruction.color.replace('#', '');
+    
+    // Tạo đoạn mã OOXML chứa nội dung mới (không đóng thẻ </w:p> vì hàm join ở cuối sẽ làm việc đó)
+    const unclosedNewPXml = `<w:p><w:r><w:rPr><w:color w:val="${colorVal}"/></w:rPr><w:t>${safeInsertText}</w:t></w:r>`;
 
-      // Nếu đoạn văn trong Word chứa đoạn mỏ neo AI chỉ định
-      if (pText.includes(target)) {
-        const colorVal = instruction.color.replace('#', '');
-        
-        // Tạo một đoạn văn OOXML mới hoàn toàn với màu sắc được chỉ định
-        const newPXml = `
-          <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-            <w:r>
-              <w:rPr><w:color w:val="${colorVal}"/></w:rPr>
-              <w:t>${instruction.insert_text}</w:t>
-            </w:r>
-          </w:p>`;
-          
-        const tempDoc = parser.parseFromString(newPXml, "application/xml");
-        const newNode = doc.importNode(tempDoc.documentElement, true);
-
-        // Tiêm đoạn văn mới vào ngay bên dưới đoạn mỏ neo tìm thấy
-        p.parentNode?.insertBefore(newNode, p.nextSibling);
-        break; // Chèn xong thì chuyển sang lệnh tiếp theo
+    for (let i = 0; i < chunks.length - 1; i++) {
+      // Rút trích chữ thô từ đoạn XML hiện tại để so sánh tìm vị trí
+      const textContent = normalize(chunks[i].replace(/<[^>]+>/g, ''));
+      
+      // Nếu tìm thấy đoạn văn chứa mỏ neo mục tiêu
+      if (textContent.includes(target)) {
+        // Nối đoạn XML mới vào ngay sau đoạn văn hiện tại
+        chunks[i] = chunks[i] + '</w:p>' + unclosedNewPXml;
+        break; // Chèn xong lệnh này thì ngắt vòng lặp, chuyển sang lệnh AI tiếp theo
       }
     }
   }
 
-  // Đóng gói lại thành file .docx nguyên vẹn
-  const serializer = new XMLSerializer();
-  const newXmlString = serializer.serializeToString(doc);
+  // Gắn lại các đoạn văn bằng thẻ đóng </w:p>
+  const newXmlString = chunks.join('</w:p>');
   zip.file("word/document.xml", newXmlString);
 
   return await zip.generateAsync({ type: "blob" });
