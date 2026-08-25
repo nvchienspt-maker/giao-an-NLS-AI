@@ -1,5 +1,4 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GENERAL_GUIDELINES, INTEGRATION_RULES } from './competencies';
 
 interface LessonOptions {
   ai: boolean;
@@ -27,20 +26,47 @@ export async function generateLessonPlan(
       } 
   });
 
-  let prompt = `BẠN LÀ MỘT CHUYÊN GIA BIÊN TẬP VÀ CHUẨN HÓA GIÁO ÁN SƯ PHẠM.
+  let prompt = `BẠN LÀ MỘT HỆ THỐNG PHÂN TÍCH VÀ ĐỊNH VỊ CẤU TRÚC GIÁO ÁN SƯ PHẠM.
 Bối cảnh: ${contextInfo}
-${GENERAL_GUIDELINES}
 
---- QUY TẮC TRÌNH BÀY MỤC TIÊU CHUNG (BẮT BUỘC) ---
-Trong phần "Mục tiêu" chung của bài học, bạn phải bổ sung định dạng phân tách rõ ràng như sau:
-- Năng lực số (Theo PPCT & TT 02/2025/TT-BGDĐT):
-  + [Mã NLS]: [Nội dung tương ứng]
-- Năng lực trí tuệ nhân tạo (AI) (Theo QĐ 2422/QĐ-BGDĐT):
-  + [Mã AI]: [Nội dung tương ứng]
+--- QUY TẮC ĐỊNH DẠNG BẮT BUỘC (CỰC KỲ QUAN TRỌNG) ---
+- Mỗi mã năng lực (cả Năng lực số và Năng lực AI nếu có) PHẢI nằm trên MỘT DÒNG RIÊNG BIỆT, bắt đầu bằng dấu gạch đầu dòng (- ). 
+- TUYỆT ĐỐI KHÔNG gộp nhiều mã năng lực trên cùng một dòng văn bản.
+- Ví dụ định dạng đúng:
+  - Năng lực số (2.2.NC1a): Chia sẻ thông tin và nội dung qua công nghệ số.
+  - Năng lực số (2.5.NC1a): Thực hiện quy tắc ứng xử trên mạng.
+
+--- NHIỆM VỤ ---
+Phân tích nội dung giáo án gốc để chèn các nội dung tích hợp vào các vị trí logic:
+1. "general_goal": Phần Mục tiêu chung của bài học.
+2. "activity_goal": Phần "a) Mục tiêu" bên trong các Hoạt động giảng dạy cụ thể.
+
+--- CÁC TÙY CHỌN ĐƯỢC BẬT TRÊN GIAO DIỆN ---
+- Năng lực số: LUÔN LUÔN chèn (Mã màu: #00008B).
 `;
 
+  if (options.ai) {
+    prompt += `- [ĐÃ BẬT] Chèn "Năng lực trí tuệ nhân tạo (AI)" theo QĐ 2422/QĐ-BGDĐT[cite: 2] (Mã màu: #B8860B). Mỗi mã AI nằm trên một dòng riêng biệt có gạch đầu dòng.\n`;
+  } else {
+    prompt += `- [ĐÃ TẮT] KHÔNG chèn Năng lực AI.\n`;
+  }
+
   if (options.inclusive) {
-    prompt += `- Giáo dục hòa nhập: [Các giải pháp hỗ trợ học sinh hòa nhập/khuyết tật của bài học] (Đặt ở dòng CUỐI CÙNG của Mục tiêu chung).\n`;
+    prompt += `- [ĐÃ BẬT] Chèn giải pháp "Giáo dục hòa nhập" xuống dòng CUỐI CÙNG của mục tiêu tổng bài học, và lồng ghép vào các hoạt động (Mã màu: #8B0000).\n`;
+  } else {
+    prompt += `- [ĐÃ TẮT] KHÔNG chèn Giáo dục hòa nhập.\n`;
+  }
+
+  if (options.foreignLang) {
+    prompt += `- [ĐÃ BẬT] Tích hợp năng lực ngoại ngữ (CLIL): Chèn thuật ngữ Tiếng Anh chuyên ngành vào các từ khóa chính.\n`;
+  } else {
+    prompt += `- [ĐÃ TẮT] KHÔNG tích hợp CLIL.\n`;
+  }
+
+  if (options.bilingual) {
+    prompt += `- [ĐÃ BẬT] Tạo song ngữ Việt - Anh: Chèn bản dịch tiếng Anh vào hoạt động Khởi động.\n`;
+  } else {
+    prompt += `- [ĐÃ TẮT] KHÔNG tạo song ngữ.\n`;
   }
 
   if (appendixContent) {
@@ -51,32 +77,22 @@ Trong phần "Mục tiêu" chung của bài học, bạn phải bổ sung địn
 [GIÁO ÁN GỐC]
 ${lessonContent}
 
---- NHIỆM VỤ CHÈN THÊM ---
-1. ${INTEGRATION_RULES.nls}
-2. ${INTEGRATION_RULES.ai}
-3. ${INTEGRATION_RULES.inclusive}
-`;
-
-  if (options.foreignLang) prompt += `4. ${INTEGRATION_RULES.foreignLang}\n`;
-  if (options.bilingual) prompt += `5. ${INTEGRATION_RULES.bilingual}\n`;
-
-  prompt += `
---- ĐẦU RA BẮT BUỘC (JSON ARRAY) ---
-Trả về mảng JSON chứa các thao tác tìm và chèn vào đúng vị trí (Mục tiêu chung và các Hoạt động):
+--- ĐỊNH DẠNG ĐẦU RA BẮT BUỘC (JSON ARRAY) ---
+Trả về mảng JSON thuần túy theo cấu trúc sau (mỗi mục năng lực dùng ký tự xuống dòng \\n cho từng dòng gạch đầu dòng):
 [
   {
-    "target_text": "Đoạn văn bản gốc có thật làm mỏ neo (VD: tiêu đề 'Mục tiêu' hoặc 'a) Mục tiêu:')",
-    "insert_text": "Nội dung cần chèn theo đúng định dạng phân tách nhóm",
+    "position": "general_goal",
+    "content": "- Năng lực số (2.2.NC1a): Nội dung 1\\n- Năng lực số (2.5.NC1a): Nội dung 2",
     "color": "00008B"
   }
 ]
-CHỈ TRẢ VỀ JSON THUẦN TÚY.
+CHỈ TRẢ VỀ JSON, KHÔNG KÈM GÌ KHÁC.
 `;
 
   try {
     const result = await model.generateContent(prompt);
     return result.response.text(); 
   } catch (err: any) {
-    throw new Error(err.message || "Lỗi khi kết nối với AI.");
+    throw new Error(err.message || "Lỗi kết nối AI.");
   }
 }
