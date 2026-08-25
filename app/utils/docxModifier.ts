@@ -88,41 +88,52 @@ export async function patchDocx(originalFile: File, instructions: Instruction[])
         }
       }
     } 
-    // 3. CHÈN VÀO ĐÚNG HOẠT ĐỘNG (KHỞI ĐỘNG, LUYỆN TẬP...)
+    // 3. CHÈN VÀO ĐÚNG HOẠT ĐỘNG (KHỞI ĐỘNG, HOẠT ĐỘNG 1, 2, 3, 4...)
     else if (instruction.position === 'hoat_dong' && instruction.activity_keyword) {
       const actKey = normalize(instruction.activity_keyword);
-      let startIndex = -1;
+      let inserted = false;
+      let passedMainGoals = false;
 
-      // Bước 1: Quét tìm tiêu đề hoạt động (Bỏ qua phần Mục tiêu ở đầu trang)
-      for (let i = Math.floor(chunks.length / 5); i < chunks.length; i++) {
+      // Lần 1: Quét an toàn (bỏ qua phần mục tiêu chung ở đầu để tránh chèn nhầm)
+      for (let i = 0; i < chunks.length; i++) {
         const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
-        // Tìm dòng có chứa tên hoạt động (Ví dụ: "hoạt động 1", "khởi động")
-        if (text.includes(actKey) && (text.includes('hoạt động') || text.includes('hđ'))) {
-          startIndex = i;
-          break;
+        
+        // Đánh dấu khi đã qua phần Mục tiêu chung, vào phần thân bài
+        if (text.includes('tiến trình dạy học') || text.includes('hoạt động dạy học') || text.includes('iii. tiến trình') || text.includes('ii. thiết bị')) {
+          passedMainGoals = true;
         }
+
+        if (passedMainGoals && text.includes(actKey)) {
+          // Khi thấy "hoạt động 1", quét tiếp tối đa 30 dòng bên dưới để tìm chữ "mục tiêu" của nó
+          const endIndex = Math.min(i + 30, chunks.length);
+          for (let j = i; j < endIndex; j++) {
+            const textAhead = normalize(chunks[j].replace(/<[^>]+>/g, ''));
+            if (textAhead.includes('a) mục tiêu') || textAhead.includes('a. mục tiêu') || textAhead.includes('1. mục tiêu') || textAhead.includes('- mục tiêu') || textAhead.includes('+ mục tiêu') || (textAhead.includes('mục tiêu:') && !textAhead.includes('chung'))) {
+              chunks[j] = chunks[j] + '</w:p>' + xmlFragment;
+              inserted = true;
+              break; 
+            }
+          }
+        }
+        if (inserted) break;
       }
 
-      // Nếu không tìm thấy chữ "hoạt động", thử tìm mỗi từ khóa (Khởi động, luyện tập...)
-      if (startIndex === -1) {
-        for (let i = Math.floor(chunks.length / 5); i < chunks.length; i++) {
+      // Lần 2 (Dự phòng): Nếu lần 1 tìm trượt do giáo án không có chữ "Tiến trình dạy học", sẽ quét lại từ đầu
+      if (!inserted) {
+        for (let i = 0; i < chunks.length; i++) {
           const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
           if (text.includes(actKey)) {
-            startIndex = i;
-            break;
+            const endIndex = Math.min(i + 30, chunks.length);
+            for (let j = i; j < endIndex; j++) {
+              const textAhead = normalize(chunks[j].replace(/<[^>]+>/g, ''));
+              if (textAhead.includes('a) mục tiêu') || textAhead.includes('a. mục tiêu') || textAhead.includes('1. mục tiêu') || textAhead.includes('- mục tiêu') || textAhead.includes('+ mục tiêu') || (textAhead.includes('mục tiêu:') && !textAhead.includes('chung'))) {
+                chunks[j] = chunks[j] + '</w:p>' + xmlFragment;
+                inserted = true;
+                break; 
+              }
+            }
           }
-        }
-      }
-
-      // Bước 2: Bắt đầu từ tên hoạt động đó, quét xuống tối đa 25 dòng để tìm "a) mục tiêu"
-      if (startIndex !== -1) {
-        const endIndex = Math.min(startIndex + 25, chunks.length);
-        for (let i = startIndex; i < endIndex; i++) {
-          const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
-          if (text.includes('a) mục tiêu') || text.includes('a. mục tiêu') || text.includes('1. mục tiêu') || text.includes('- mục tiêu') || text.includes('+ mục tiêu') || (text.includes('mục tiêu:') && !text.includes('chung'))) {
-            chunks[i] = chunks[i] + '</w:p>' + xmlFragment;
-            break; 
-          }
+          if (inserted) break;
         }
       }
     }
