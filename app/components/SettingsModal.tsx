@@ -9,6 +9,7 @@ interface SettingsModalProps {
   setApiKey: (key: string) => void;
   model: string;
   setModel: (model: string) => void;
+  isDarkMode: boolean;
 }
 
 interface AIModel {
@@ -16,7 +17,7 @@ interface AIModel {
   displayName: string;
 }
 
-export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, model, setModel }: SettingsModalProps) {
+export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, model, setModel, isDarkMode }: SettingsModalProps) {
   const [tempKey, setTempKey] = useState(apiKey);
   const [tempModel, setTempModel] = useState(model);
   const [showKey, setShowKey] = useState(false); // Trạng thái ẩn/hiện mật khẩu
