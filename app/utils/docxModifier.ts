@@ -77,19 +77,35 @@ export async function patchDocx(originalFile: File, instructions: Instruction[])
         }
       }
     } 
+    // ... (Giữ nguyên phần 1. nang_luc_chung và 2. cuoi_muc_tieu ở trên) ...
+    
     // 3. CHÈN VÀO MỤC TIÊU CỦA CÁC HOẠT ĐỘNG
     else if (instruction.position === 'hoat_dong' && instruction.activity_keyword) {
       const actKey = normalize(instruction.activity_keyword);
-      let foundActivity = false;
-      
+      let startIndex = -1;
+
+      // Bước 1: Tìm vị trí của tiêu đề Hoạt động (Ví dụ: "Hoạt động 1")
       for (let i = 0; i < chunks.length; i++) {
         const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
         if (text.includes(actKey)) {
-          foundActivity = true;
-        }
-        if (foundActivity && (text.includes('a) mục tiêu') || text.includes('mục tiêu:') || text.includes('a) mục tiêu:'))) {
-          chunks[i] = chunks[i] + '</w:p>' + xmlFragment;
+          startIndex = i;
           break;
+        }
+      }
+
+      // Bước 2: Từ vị trí tiêu đề, quét xuống tối đa 20 dòng để tìm dòng Mục tiêu
+      if (startIndex !== -1) {
+        // Math.min giúp không bị lỗi nếu đoạn mã quét vượt quá số dòng của văn bản
+        const endIndex = Math.min(startIndex + 20, chunks.length);
+        
+        for (let i = startIndex; i < endIndex; i++) {
+          const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
+          
+          // Bắt các kiểu gõ mục tiêu phổ biến trong giáo án
+          if (text.includes('a) mục tiêu') || text.includes('a. mục tiêu') || text.includes('mục tiêu:')) {
+            chunks[i] = chunks[i] + '</w:p>' + xmlFragment;
+            break; // Đã chèn xong cho hoạt động này, ngắt vòng lặp nhỏ
+          }
         }
       }
     }
