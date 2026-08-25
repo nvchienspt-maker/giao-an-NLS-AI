@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Settings, FileText, Loader2, Cpu, HeartHandshake, Globe, Languages, Download } from 'lucide-react';
+import { Settings, FileText, Loader2, Cpu, HeartHandshake, Globe, Languages, Download, AlertCircle, Copy } from 'lucide-react';
 import SettingsModal from './components/SettingsModal';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { generateLessonPlan } from './utils/gemini';
@@ -14,7 +14,6 @@ export default function Home() {
   const [subject, setSubject] = useState('Tin học');
   const [grade, setGrade] = useState('Lớp 10');
   
-  // Tách riêng 2 state cho Giáo án gốc và Phụ lục năng lực
   const [file, setFile] = useState<File | null>(null);
   const [appendixFile, setAppendixFile] = useState<File | null>(null);
   
@@ -28,52 +27,63 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [progressText, setProgressText] = useState('');
   const [result, setResult] = useState('');
+  
+  // State mới để quản lý lỗi hiển thị trên giao diện
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setFile(e.target.files[0]);
+      setErrorMessage(''); // Xóa lỗi khi chọn lại file
     }
   };
 
   const handleAppendixChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setAppendixFile(e.target.files[0]);
+      setErrorMessage('');
     }
   };
 
   const handleGenerate = async () => {
-    if (!file) return alert('Vui lòng chọn tệp giáo án đầu vào!');
-    if (!apiKey) return alert('Vui lòng thiết lập API Key!');
+    setErrorMessage(''); // Reset lỗi trước khi chạy mới
+    
+    if (!file) {
+      setErrorMessage('Vui lòng chọn tệp giáo án đầu vào!');
+      return;
+    }
+    if (!apiKey) {
+      setErrorMessage('Vui lòng thiết lập API Key!');
+      return;
+    }
     
     setIsLoading(true);
     setResult('');
     
     const steps = [
-      "Đang trích xuất dữ liệu từ tệp gốc...",
+      "Đang trích xuất dữ liệu HTML từ tệp gốc...",
       appendixFile ? "Đang phân tích Phụ lục và đối chiếu Năng lực..." : "",
-      "Đang gửi dữ liệu tới máy chủ Google AI...",
-      "AI đang cấu trúc lại Kế hoạch bài dạy...",
+      "Đang tải dữ liệu lên máy chủ Google AI...",
+      "AI đang cấu trúc và tính toán vị trí chèn HTML...",
       options.ai ? "Đang tích hợp Năng lực Trí tuệ nhân tạo..." : "",
       options.inclusive ? "Đang bổ sung phương pháp Giáo dục hòa nhập..." : "",
       options.foreignLang ? "Đang gắn thuật ngữ chuyên ngành (CLIL)..." : "",
       options.bilingual ? "Đang tạo phân đoạn Song ngữ Việt - Anh..." : "",
-      "Đang định dạng lại mã HTML để hiển thị và tải xuống..."
+      "Đang hoàn thiện mã HTML..."
     ].filter(Boolean);
 
     let stepIndex = 0;
     let secondsWaited = 0;
     setProgressText(steps[0]);
 
-    // Thay đổi logic Interval để đếm thời gian thực nếu API chạy lâu
     const progressInterval = setInterval(() => {
-      secondsWaited += 2.5; // Tăng thời gian chờ (mỗi chu kỳ 2.5s)
+      secondsWaited += 2.5; 
       
       if (stepIndex < steps.length - 1) {
         stepIndex++;
         setProgressText(steps[stepIndex]);
       } else {
-        // Khi chữ đã chạy hết mà AI vẫn chưa trả kết quả
-        setProgressText(`AI vẫn đang viết giáo án... Vui lòng đợi (${Math.floor(secondsWaited)}s)`);
+        setProgressText(`AI đang tổng hợp văn bản... Vui lòng đợi (${Math.floor(secondsWaited)}s)`);
       }
     }, 2500);
     
@@ -94,7 +104,8 @@ export default function Home() {
       setResult(aiResponse);
     } catch (error: any) {
       clearInterval(progressInterval);
-      alert(`Có lỗi xảy ra: ${error.message}`);
+      // Thay thế alert bằng việc gán thông báo lỗi vào UI
+      setErrorMessage(`[GoogleGenerativeAI Error]:\n${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -111,27 +122,31 @@ export default function Home() {
         <meta charset='utf-8'>
         <title>Giáo án</title>
         <style>
+          @page WordSection1 {
+              size: 21.0cm 29.7cm;
+              margin: 2.0cm 2.0cm 2.0cm 2.0cm;
+          }
+          div.WordSection1 { page: WordSection1; }
           body { font-family: 'Times New Roman', serif; font-size: 14pt; line-height: 1.5; }
-          h1, h2, h3 { color: #333; }
-          table { border-collapse: collapse; width: 100%; margin-bottom: 10px; }
-          table, th, td { border: 1px solid black; padding: 8px; }
+          h1, h2, h3, h4, h5 { font-family: 'Times New Roman', serif; color: #000; }
+          p { margin: 0 0 8pt 0; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 10px; }
+          table, td, th { border: 1pt solid black; padding: 5px; vertical-align: top; }
         </style>
       </head>
       <body>
+        <div class="WordSection1">
     `;
-    const footer = "</body></html>";
+    const footer = "</div></body></html>";
     const htmlContent = document.getElementById("ai-result-content")?.innerHTML || "";
     
     const sourceHTML = header + htmlContent + footer;
-    const blob = new Blob(['\ufeff', sourceHTML], {
-      type: 'application/msword'
-    });
-
+    const blob = new Blob(['\ufeff', sourceHTML], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
+    
     const fileDownload = document.createElement("a");
     document.body.appendChild(fileDownload);
     fileDownload.href = url;
-    
     fileDownload.download = `Giao_An_${subject}_${grade}.doc`;
     fileDownload.click();
     document.body.removeChild(fileDownload);
@@ -183,14 +198,11 @@ export default function Home() {
           <section className="bg-[#1e2330] p-6 rounded-xl border border-gray-800">
             <h2 className="text-lg font-semibold text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Tài liệu đầu vào</h2>
             
-            {/* Chia làm 2 cột: Giáo án và Phụ lục */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              {/* Tải Giáo án gốc */}
               <div className="border border-dashed border-gray-600 rounded-xl p-5 bg-[#181c25] flex flex-col items-start gap-4">
                  <div>
                    <p className="text-sm text-gray-300 font-medium">1. Giáo án gốc <span className="text-red-500">*</span></p>
-                   <p className="text-xs text-gray-500 mt-1">Giáo án cần được biên tập (.docx, .pdf)</p>
+                   <p className="text-xs text-gray-500 mt-1">Giáo án cần biên tập (.docx, .pdf)</p>
                  </div>
                  <div className="flex items-center gap-3 w-full">
                    <div className="relative shrink-0">
@@ -208,11 +220,10 @@ export default function Home() {
                  </div>
               </div>
 
-              {/* Tải Phụ lục Năng lực */}
               <div className="border border-dashed border-gray-600 rounded-xl p-5 bg-[#181c25] flex flex-col items-start gap-4">
                  <div>
                    <p className="text-sm text-gray-300 font-medium">2. Phụ lục Năng lực (Tùy chọn)</p>
-                   <p className="text-xs text-gray-500 mt-1">PPCT chứa danh sách năng lực (.docx, .pdf)</p>
+                   <p className="text-xs text-gray-500 mt-1">Danh sách phân phối chương trình</p>
                  </div>
                  <div className="flex items-center gap-3 w-full">
                    <div className="relative shrink-0">
@@ -229,7 +240,6 @@ export default function Home() {
                    </div>
                  </div>
               </div>
-
             </div>
           </section>
 
@@ -240,14 +250,12 @@ export default function Home() {
                   <input type="checkbox" className="mt-1" checked={options.ai} onChange={e => setOptions({...options, ai: e.target.checked})} />
                   <div>
                      <p className="font-medium text-yellow-500 flex items-center gap-2"><Cpu size={16}/> Thêm năng lực trí tuệ nhân tạo vào giáo án</p>
-                     <p className="text-xs text-gray-400 mt-1">Được làm nổi bật bằng <span className="text-yellow-600 font-bold">Màu Vàng Tối</span></p>
                   </div>
                 </label>
                 <label className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer ${options.inclusive ? 'border-red-600 bg-red-600/10' : 'border-gray-700 hover:bg-gray-800'}`}>
                   <input type="checkbox" className="mt-1" checked={options.inclusive} onChange={e => setOptions({...options, inclusive: e.target.checked})} />
                   <div>
                      <p className="font-medium text-red-500 flex items-center gap-2"><HeartHandshake size={16}/> Thêm giải pháp giáo dục hòa nhập</p>
-                     <p className="text-xs text-gray-400 mt-1">Được làm nổi bật bằng <span className="text-red-700 font-bold">Màu Đỏ Tối</span></p>
                   </div>
                 </label>
                 <label className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer ${options.foreignLang ? 'border-emerald-500 bg-emerald-500/10' : 'border-gray-700 hover:bg-gray-800'}`}>
@@ -269,6 +277,29 @@ export default function Home() {
               </>
             ) : 'Tạo Giáo Án'}
           </button>
+
+          {/* KHU VỰC HIỂN THỊ LỖI MỚI */}
+          {errorMessage && (
+            <div className="relative bg-red-950/40 border border-red-800/50 rounded-xl p-5 mt-4">
+              <h4 className="text-red-400 font-semibold mb-2 flex items-center gap-2">
+                <AlertCircle size={18}/> Đã xảy ra lỗi
+              </h4>
+              <p className="text-red-300 text-sm font-mono whitespace-pre-wrap break-words pr-12">
+                {errorMessage}
+              </p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(errorMessage);
+                  alert('Đã copy lỗi vào bộ nhớ tạm!');
+                }}
+                className="absolute top-4 right-4 bg-red-900/30 hover:bg-red-800/50 text-red-300 p-2 rounded-lg transition-colors flex flex-col items-center gap-1"
+                title="Copy mã lỗi"
+              >
+                <Copy size={16} />
+                <span className="text-[10px]">Copy</span>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
