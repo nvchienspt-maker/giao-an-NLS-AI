@@ -22,29 +22,27 @@ export async function generateLessonPlan(
   const model = genAI.getGenerativeModel({ 
       model: modelName,
       generationConfig: { 
-        // Ép AI trả về chuẩn JSON để code JavaScript có thể đọc và xử lý
-        responseMimeType: "application/json",
+        responseMimeType: "application/json", // BẮT BUỘC TRẢ VỀ ĐỊNH DẠNG JSON
         temperature: 0.1, 
       } 
   });
 
-  let prompt = `BẠN LÀ MỘT HỆ THỐNG PHÂN TÍCH VÀ ĐỀ XUẤT VỊ TRÍ CHÈN VĂN BẢN.
+  let prompt = `BẠN LÀ MỘT HỆ THỐNG TÌM KIẾM VÀ ĐỀ XUẤT VỊ TRÍ CHÈN VĂN BẢN TRÊN NỀN HTML.
 Bối cảnh: ${contextInfo}
 ${GENERAL_GUIDELINES}
 `;
 
   if (appendixContent) {
-    prompt += `\nPhụ lục PPCT (Dùng để lấy mã và diễn giải Năng lực số vào phần Mục tiêu):\n${appendixContent}\n`;
+    prompt += `\n[PHỤ LỤC PPCT]\nTìm tên bài học của "Giáo án gốc" trong Phụ lục này để lấy đúng mã năng lực và diễn giải chèn vào "Mục tiêu bài học".\n${appendixContent}\n`;
   }
 
   prompt += `
-[GIÁO ÁN GỐC]
+[GIÁO ÁN GỐC (Mã HTML)]
 ${lessonContent}
 
 --- NHIỆM VỤ ---
-Bạn không được viết lại giáo án. Bạn chỉ cần tìm các vị trí phù hợp trong "Giáo án gốc", sau đó tạo ra nội dung cần chèn theo các quy tắc dưới đây.
-
-Quy tắc hiển thị (Mã HTML):
+Bạn KHÔNG được viết lại giáo án. Nhiệm vụ của bạn là tìm các vị trí phù hợp trong mã HTML trên để chèn thêm nội dung mới.
+Quy tắc chèn và màu sắc (TUYỆT ĐỐI KHÔNG DÙNG THẺ IN ĐẬM CHO CÁC NỘI DUNG NÀY):
 - ${INTEGRATION_RULES.nls}
 `;
 
@@ -54,20 +52,19 @@ Quy tắc hiển thị (Mã HTML):
   if (options.bilingual) prompt += `- ${INTEGRATION_RULES.bilingual}\n`;
 
   prompt += `
---- ĐỊNH DẠNG ĐẦU RA BẮT BUỘC (JSON) ---
-Bạn PHẢI trả về một mảng JSON (JSON array) chứa các object. Mỗi object đại diện cho một hành động chèn nội dung vào giáo án.
-Cấu trúc object:
-{
-  "anchorText": "Một đoạn văn bản CÓ THẬT và CHÍNH XÁC trong giáo án gốc để làm mỏ neo xác định vị trí (Ví dụ: 'Mục tiêu: HS có khái niệm về AI')",
-  "insertHTML": "Mã HTML chứa nội dung bạn muốn chèn NGAY BÊN DƯỚI đoạn mỏ neo đó (Ví dụ: '<br><span style=\"color: #00008B;\">Năng lực số: ...</span>')"
-}
-
-Lưu ý: "anchorText" phải ngắn gọn (khoảng 10-20 từ) nhưng phải xuất hiện chính xác 100% trong giáo án gốc để hệ thống có thể dùng hàm thay thế (replace).
+--- ĐỊNH DẠNG ĐẦU RA BẮT BUỘC (JSON ARRAY) ---
+Bạn PHẢI trả về một mảng JSON chứa các object mô tả thao tác chèn:
+[
+  {
+    "anchorText": "Copy Y HỆT một đoạn văn bản/mã HTML từ Giáo án gốc (dài khoảng 10-20 từ, bao gồm cả thẻ <strong>, <td>... nếu có) nằm ngay TRƯỚC vị trí bạn muốn chèn. Phải copy đúng 100% từng khoảng trắng để hệ thống có thể tìm thấy.",
+    "insertHTML": "Mã HTML chứa nội dung bạn chèn thêm (Ví dụ: '<br><span style=\"color: #00008B;\">...</span>')"
+  }
+]
 `;
 
   try {
     const result = await model.generateContent(prompt);
-    return result.response.text(); // Chuỗi này giờ đây là một mảng JSON hợp lệ
+    return result.response.text(); 
   } catch (err: any) {
     throw new Error(err.message || "Lỗi khi kết nối với AI.");
   }

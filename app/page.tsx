@@ -60,45 +60,42 @@ export default function Home() {
 
     const progressInterval = setInterval(() => {
       secondsWaited += 2; 
-      setProgressText(`Đang phân tích và nội suy vị trí chèn... Vui lòng đợi (${secondsWaited}s)`);
+      setProgressText(`AI đang tính toán vị trí chèn văn bản... Vui lòng đợi (${secondsWaited}s)`);
     }, 2000);
     
     try {
-      // 1. Trích xuất HTML gốc (CÓ HÌNH ẢNH) để giữ làm bản gốc
+      // 1. Trích xuất HTML gốc (CÓ HÌNH ẢNH DẠNG BASE64 để giữ cấu trúc)
       const originalHTML = await extractTextFromFile(file);
       
-      // 2. Tạo bản sao NHẸ (KHÔNG HÌNH ẢNH) để gửi cho AI đọc
-      // Dùng Regex xóa các thẻ img chứa base64 dài dòng
-      const lightweightHTMLForAI = originalHTML.replace(/<img[^>]*src="data:image[^>]*>/gi, '[HÌNH ẢNH ĐÃ ẨN]');
+      // 2. Tạo bản sao NHẸ (KHÔNG ẢNH) để gửi cho AI đọc (Giúp tránh lỗi 429 Quota)
+      const lightweightHTMLForAI = originalHTML.replace(/<img[^>]*>/gi, '[HÌNH ẢNH]');
       
       let appendixText = "";
       if (appendixFile) {
          appendixText = await extractTextFromFile(appendixFile);
-         appendixText = appendixText.replace(/<img[^>]*src="data:image[^>]*>/gi, '[HÌNH ẢNH ĐÃ ẨN]');
+         appendixText = appendixText.replace(/<img[^>]*>/gi, '[HÌNH ẢNH]');
       }
 
       const contextInfo = `Môn học: ${subject}, Khối lớp: ${grade}`;
       
-      // 3. Gửi bản NHẸ cho AI và nhận về JSON chứa các vị trí cần chèn
+      // 3. Gửi bản NHẸ cho AI và nhận về mảng JSON chỉ đường
       const aiResponseJSON = await generateLessonPlan(apiKey, model, lightweightHTMLForAI, options, contextInfo, appendixText);
       
-      // 4. Phân tích cú pháp JSON
+      // 4. Giải mã JSON
       let instructions = [];
       try {
         instructions = JSON.parse(aiResponseJSON);
       } catch (e) {
-        throw new Error("AI không trả về đúng định dạng JSON. Vui lòng thử lại.");
+        throw new Error("AI không trả về đúng định dạng JSON để xử lý. Vui lòng thử lại.");
       }
 
-      // 5. JavaScript thực hiện chèn dữ liệu vào bản HTML GỐC (CÓ HÌNH ẢNH)
+      // 5. Vá dữ liệu vào bản GỐC (Bản có hình ảnh)
       let patchedHTML = originalHTML;
       instructions.forEach((instruction: any) => {
           if (instruction.anchorText && instruction.insertHTML) {
-             // Thay thế đoạn mỏ neo bằng: [Đoạn mỏ neo] + [Nội dung chèn thêm]
-             // Dùng split và join để thay thế chuỗi an toàn
-             const parts = patchedHTML.split(instruction.anchorText);
-             if (parts.length > 1) {
-                 patchedHTML = parts.join(`${instruction.anchorText} ${instruction.insertHTML}`);
+             // Hàm replace chỉ thay thế ở đúng vị trí anchorText đầu tiên tìm thấy
+             if (patchedHTML.includes(instruction.anchorText)) {
+                patchedHTML = patchedHTML.replace(instruction.anchorText, instruction.anchorText + " " + instruction.insertHTML);
              }
           }
       });
@@ -106,7 +103,7 @@ export default function Home() {
       clearInterval(progressInterval);
       setProgressText('Hoàn tất!');
       
-      // Hiển thị bản HTML đã được vá
+      // Render bản HTML đã được vá lên màn hình (Mọi thứ sẽ giống gốc 100%)
       setResult(patchedHTML);
 
     } catch (error: any) {
