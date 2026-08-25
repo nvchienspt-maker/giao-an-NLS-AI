@@ -227,8 +227,17 @@ export default function Home() {
         {/* Thông tin người thiết kế (Khu vực giữa) */}
         <div className="hidden md:flex flex-col items-center justify-center text-center flex-1">
           <span className="text-sm font-bold text-blue-400 tracking-widest uppercase">
-            Phát triển bởi NVC Space - https://chienzz.web.app
+            Phát triển bởi NVC Space -{" "}
+            <a
+              href="https://chienzz.web.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-blue-300 hover:underline transition-colors"
+            >
+              https://chienzz.web.app
+            </a>
           </span>
+
           <span className="text-xs text-gray-500 mt-1">
             Hệ thống AI Hỗ trợ Giáo dục THPT
           </span>
