@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GENERAL_GUIDELINES, INTEGRATION_RULES } from './competencies';
 
 interface LessonOptions {
   ai: boolean;
@@ -26,58 +27,50 @@ export async function generateLessonPlan(
       } 
   });
 
-  let prompt = `BẠN LÀ MỘT HỆ THỐNG PHÂN TÍCH VÀ ĐỊNH VỊ CẤU TRÚC GIÁO ÁN SƯ PHẠM.
+  let prompt = `BẠN LÀ MỘT CHUYÊN GIA BIÊN TẬP VÀ CHUẨN HÓA GIÁO ÁN SƯ PHẠM.
 Bối cảnh: ${contextInfo}
+${GENERAL_GUIDELINES}
 
---- NHIỆM VỤ QUAN TRỌNG ---
-Bạn phải tìm và lập danh sách các vị trí cần chèn nội dung tích hợp vào **HAI NƠI**:
-1. **Mục tiêu chung của bài học** (Phần đầu giáo án).
-2. **Mục tiêu của từng Hoạt động** (Tìm chính xác các dòng có chữ dạng: "a) Mục tiêu:", "Mục tiêu:", hoặc dòng mở đầu phần nội dung của Hoạt động 1, Hoạt động 2...).
-
---- QUY TẮC ĐỊNH DẠNG VÀ MÀU SẮC (BẮT BUỘC) ---
-- Định dạng: Viết dưới dạng gạch đầu dòng chuẩn sư phạm. Ví dụ: "- Phát triển năng lực số (Mã): Nội dung..." hoặc "- Năng lực AI: Nội dung..."
-- MÀU SẮC (Mã màu Hex cho file Word):
-  * Năng lực số: #00008B (Xanh dương tối)
-  * Năng lực AI: #B8860B (Vàng tối)
-  * Giáo dục hòa nhập: #8B0000 (Đỏ tối)
+--- QUY TẮC TRÌNH BÀY MỤC TIÊU CHUNG (BẮT BUỘC) ---
+Trong phần "Mục tiêu" chung của bài học, bạn phải bổ sung định dạng phân tách rõ ràng như sau:
+- Năng lực số (Theo PPCT & TT 02/2025/TT-BGDĐT):
+  + [Mã NLS]: [Nội dung tương ứng]
+- Năng lực trí tuệ nhân tạo (AI) (Theo QĐ 2422/QĐ-BGDĐT):
+  + [Mã AI]: [Nội dung tương ứng]
 `;
 
+  if (options.inclusive) {
+    prompt += `- Giáo dục hòa nhập: [Các giải pháp hỗ trợ học sinh hòa nhập/khuyết tật của bài học] (Đặt ở dòng CUỐI CÙNG của Mục tiêu chung).\n`;
+  }
+
   if (appendixContent) {
-    prompt += `\n[PHỤ LỤC PPCT]\nDùng để tra cứu tên bài và chọn mã Năng lực số (VD: 3.4.NC1a, 5.3.NC1b...) phù hợp:\n${appendixContent}\n`;
+    prompt += `\n[PHỤ LỤC PHÂN PHỐI CHƯƠNG TRÌNH]\n${appendixContent}\n`;
   }
 
   prompt += `
 [GIÁO ÁN GỐC]
 ${lessonContent}
 
---- CÁC TÙY CHỌN TÍCH HỢP (CHỈ CHÈN KHI ĐƯỢC BẬT) ---
-- Luôn luôn chèn Năng lực số vào Mục tiêu chung VÀ Mục tiêu của các Hoạt động giảng dạy. (Màu: 00008B)
+--- NHIỆM VỤ CHÈN THÊM ---
+1. ${INTEGRATION_RULES.nls}
+2. ${INTEGRATION_RULES.ai}
+3. ${INTEGRATION_RULES.inclusive}
 `;
 
-  if (options.ai) {
-    prompt += `- [ĐÃ BẬT] Chèn tích hợp "Năng lực AI" vào mục tiêu hoạt động phù hợp. (Mã màu: B8860B)\n`;
-  }
-  if (options.inclusive) {
-    prompt += `- [ĐÃ BẬT] Chèn giải pháp "Giáo dục hòa nhập" hỗ trợ học sinh khuyết tật vào phần mục tiêu/nội dung hoạt động. (Mã màu: 8B0000)\n`;
-  }
-  if (options.foreignLang) {
-    prompt += `- [ĐÃ BẬT] Chèn thuật ngữ Tiếng Anh chuyên ngành (CLIL).\n`;
-  }
-  if (options.bilingual) {
-    prompt += `- [ĐÃ BẬT] Chèn bản dịch tiếng Anh vào hoạt động Khởi động.\n`;
-  }
+  if (options.foreignLang) prompt += `4. ${INTEGRATION_RULES.foreignLang}\n`;
+  if (options.bilingual) prompt += `5. ${INTEGRATION_RULES.bilingual}\n`;
 
   prompt += `
 --- ĐẦU RA BẮT BUỘC (JSON ARRAY) ---
-Trả về mảng JSON chứa danh sách các điểm mỏ neo cần chèn:
+Trả về mảng JSON chứa các thao tác tìm và chèn vào đúng vị trí (Mục tiêu chung và các Hoạt động):
 [
   {
-    "target_text": "Copy CHÍNH XÁC một câu hoặc đoạn ngắn có thật nằm ngay tại dòng 'a) Mục tiêu:' của một hoạt động hoặc phần mục tiêu chung",
-    "insert_text": "- Phát triển năng lực số (Mã): Nội dung chi tiết...",
+    "target_text": "Đoạn văn bản gốc có thật làm mỏ neo (VD: tiêu đề 'Mục tiêu' hoặc 'a) Mục tiêu:')",
+    "insert_text": "Nội dung cần chèn theo đúng định dạng phân tách nhóm",
     "color": "00008B"
   }
 ]
-CHỈ TRẢ VỀ JSON, KHÔNG KÈM GÌ KHÁC.
+CHỈ TRẢ VỀ JSON THUẦN TÚY.
 `;
 
   try {
