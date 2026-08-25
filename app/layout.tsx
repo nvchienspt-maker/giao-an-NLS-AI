@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tạo giáo án nâng cao năng lực học sinh bằng AI",
-  description: "Tạo giáo án nâng cao năng lực học sinh bằng AI",
+  title: "Tạo giáo án năng lực số, AI",
+  description: "Tạo giáo án năng lực số, AI",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
