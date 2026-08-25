@@ -1,5 +1,6 @@
+'use client';
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, AlertCircle } from 'lucide-react';
+import { X, Loader2, AlertCircle, Eye, EyeOff, Key as KeyIcon, ExternalLink, Settings } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface AIModel {
 export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, model, setModel }: SettingsModalProps) {
   const [tempKey, setTempKey] = useState(apiKey);
   const [tempModel, setTempModel] = useState(model);
+  const [showKey, setShowKey] = useState(false); // Trạng thái ẩn/hiện mật khẩu
   
   const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +31,7 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
     setTempModel(model || 'gemini-3.5-flash');
   }, [apiKey, model, isOpen]);
 
+  // Logic tự động kiểm tra Key và lấy danh sách Model từ code cũ
   useEffect(() => {
     if (!tempKey || tempKey.trim().length < 20) {
         setAvailableModels([]);
@@ -105,57 +108,91 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#1e2330] w-full max-w-md rounded-xl p-6 text-white shadow-2xl border border-gray-700">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold flex items-center gap-2">Thiết lập AI</h3>
-          <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-white transition" /></button>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+      <div className="bg-[#1e2330] w-full max-w-md rounded-2xl border border-gray-800 shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+        
+        <div className="flex justify-between items-center p-5 border-b border-gray-800 bg-[#181c25]">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Settings size={20} className="text-blue-500"/> Thiết lập Hệ thống
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors bg-gray-800/50 hover:bg-gray-700 p-1.5 rounded-lg">
+            <X size={20} />
+          </button>
         </div>
 
-        <div className="space-y-3 mb-6">
-          <label className="text-sm font-medium text-gray-300">Nhập API Key của bạn</label>
-          <input 
-            type="password" 
-            value={tempKey}
-            onChange={(e) => setTempKey(e.target.value)}
-            className={`w-full bg-[#11141c] border ${isError ? 'border-red-500' : 'border-gray-600'} rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition`}
-            placeholder="Dán AIzaSy... vào đây"
-          />
-          <div className="h-6 flex items-center">
-            {isLoading && <p className="text-xs text-blue-400 flex items-center gap-2"><Loader2 size={12} className="animate-spin"/> {statusMsg}</p>}
-            {!isLoading && statusMsg && (
-                <p className={`text-xs flex items-center gap-1 ${isError ? 'text-red-400' : 'text-green-400'}`}>
-                    {isError ? <AlertCircle size={12}/> : null} {statusMsg}
-                </p>
-            )}
+        <div className="p-6 space-y-6">
+          <div className="space-y-2">
+            <div className="flex justify-between items-end mb-1">
+              <label className="block text-sm font-medium text-gray-300">
+                Google Gemini API Key <span className="text-red-500">*</span>
+              </label>
+              {/* Nút Lấy Key chuyển lên đây cho gọn gàng */}
+              <a 
+                href="https://aistudio.google.com/app/apikey" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Lấy Key <ExternalLink size={12} />
+              </a>
+            </div>
+            
+            <div className="relative">
+              <input 
+                type={showKey ? "text" : "password"} 
+                value={tempKey}
+                onChange={(e) => setTempKey(e.target.value)}
+                className={`w-full bg-[#11141c] border ${isError ? 'border-red-500' : 'border-gray-600'} rounded-lg p-3 pr-12 text-white focus:outline-none focus:border-blue-500 transition font-mono text-sm`}
+                placeholder="Dán AIzaSy... vào đây"
+              />
+              <button 
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-400 p-1 transition-colors"
+                title={showKey ? "Ẩn API Key" : "Hiện API Key"}
+              >
+                {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            
+            <div className="h-5 flex items-center mt-1">
+              {isLoading && <p className="text-xs text-blue-400 flex items-center gap-1.5"><Loader2 size={12} className="animate-spin"/> {statusMsg}</p>}
+              {!isLoading && statusMsg && (
+                  <p className={`text-xs flex items-center gap-1.5 ${isError ? 'text-red-400' : 'text-green-400'}`}>
+                      {isError ? <AlertCircle size={12}/> : null} {statusMsg}
+                  </p>
+              )}
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">Model đang dùng (Tự động)</label>
+            <select 
+              value={tempModel} 
+              onChange={(e) => setTempModel(e.target.value)}
+              disabled={availableModels.length === 0}
+              className="w-full bg-[#11141c] border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50 appearance-none"
+            >
+              {availableModels.length > 0 ? (
+                availableModels.map(m => (
+                  <option key={m.name} value={m.name}>{m.displayName} ({m.name})</option>
+                ))
+              ) : (
+                <option>{tempModel}</option>
+              )}
+            </select>
           </div>
         </div>
-        
-        <div className="space-y-2 mb-8">
-          <label className="text-sm font-medium text-gray-300">Model đang dùng (Tự động)</label>
-          <select 
-            value={tempModel} 
-            onChange={(e) => setTempModel(e.target.value)}
-            disabled={availableModels.length === 0}
-            className="w-full bg-[#11141c] border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50 appearance-none"
-          >
-            {availableModels.length > 0 ? (
-              availableModels.map(m => (
-                <option key={m.name} value={m.name}>{m.displayName} ({m.name})</option>
-              ))
-            ) : (
-              <option>{tempModel}</option>
-            )}
-          </select>
-        </div>
 
-        <button 
-          onClick={handleSave}
-          disabled={!tempKey || isError || isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-blue-900/20"
-        >
-          Lưu & Bắt đầu sử dụng
-        </button>
+        <div className="p-5 border-t border-gray-800 bg-[#181c25] flex justify-end">
+          <button 
+            onClick={handleSave}
+            disabled={!tempKey || isError || isLoading}
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-6 rounded-lg transition-colors shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Lưu & Đóng
+          </button>
+        </div>
       </div>
     </div>
   );
