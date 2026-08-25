@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tạo giáo án năng lực số, AI",
+  title: "Giáo án năng lực số, AI",
   description: "Tạo giáo án năng lực số, AI",
 };
 
