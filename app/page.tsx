@@ -12,8 +12,9 @@ export default function Home() {
   const [apiKey, setApiKey] = useLocalStorage('gemini_api_key_v6', '');
   const [model, setModel] = useLocalStorage('gemini_model_v6', 'gemini-3.5-flash');
   
-  const [subject, setSubject] = useState('Tin học');
-  const [grade, setGrade] = useState('Lớp 10');
+  // Thay thế useState bằng useLocalStorage để trình duyệt tự động ghi nhớ
+  const [subject, setSubject] = useLocalStorage('gemini_subject', 'Tin học');
+  const [grade, setGrade] = useLocalStorage('gemini_grade', 'Lớp 12');
   
   const [file, setFile] = useState<File | null>(null);
   const [appendixFile, setAppendixFile] = useState<File | null>(null);
@@ -95,7 +96,34 @@ export default function Home() {
 
       clearInterval(progressInterval);
       setProgressText('Hoàn tất!');
-      setResult("Đã tích hợp thành công! File giáo án gốc với cấu trúc giữ nguyên 100% đã được tải xuống máy của bạn.");
+      
+      // 5. TẠO BẢN TÓM TẮT ĐỂ HIỂN THỊ LÊN GIAO DIỆN WEB (KHÔNG HIỆN TOÀN BỘ GIÁO ÁN)
+      let summaryHTML = '<div style="font-family: Arial, sans-serif; line-height: 1.6;">';
+      summaryHTML += '<div style="background-color: #f0fdf4; color: #166534; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; border: 1px solid #bbf7d0;">✅ Đã tích hợp thành công! File giáo án hoàn chỉnh đã được tải xuống máy của bạn. Dưới đây là thống kê các năng lực AI đã tự động chèn vào:</div>';
+      
+      instructions.forEach((inst: any, idx: number) => {
+        const title = inst.position === 'nang_luc_chung' ? '🎯 MỤC TIÊU CHUNG (Đầu giáo án)' :
+                      inst.position === 'cuoi_muc_tieu' ? '🤝 GIÁO DỤC HÒA NHẬP (Cuối mục tiêu)' :
+                      `📝 ${inst.activity_keyword ? inst.activity_keyword.toUpperCase() : 'HOẠT ĐỘNG'}`;
+                      
+        summaryHTML += `<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; background-color: #ffffff;">`;
+        summaryHTML += `<div style="font-weight: bold; color: #374151; margin-bottom: 8px; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px;">${idx + 1}. ${title}</div>`;
+        
+        const parseLines = (lines: string[] | string | undefined, colorHex: string) => {
+           if (!lines) return '';
+           const arr = Array.isArray(lines) ? lines : lines.split('\n');
+           return arr.filter(l => l.trim()).map(l => `<div style="color: ${colorHex}; margin-left: 16px; margin-bottom: 4px;">${l}</div>`).join('');
+        };
+        
+        summaryHTML += parseLines(inst.nls, '#00008B');
+        summaryHTML += parseLines(inst.ai, '#B8860B');
+        summaryHTML += parseLines(inst.gdhn, '#8B0000');
+        
+        summaryHTML += `</div>`;
+      });
+      summaryHTML += '</div>';
+      
+      setResult(summaryHTML);
 
     } catch (error: any) {
       clearInterval(progressInterval);
@@ -211,17 +239,56 @@ export default function Home() {
               <div>
                 <label className="block text-sm mb-2 text-gray-300">Môn học <span className="text-red-500">*</span></label>
                 <select value={subject} onChange={e => setSubject(e.target.value)} className="w-full bg-[#11141c] border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none">
+                  {/* Các môn xuyên suốt */}
                   <option>Tin học</option>
                   <option>Toán</option>
-                  <option>Ngữ Văn</option>
+                  <option>Ngoại ngữ</option>
+                  <option>Công nghệ</option>
+                  <option>Giáo dục thể chất</option>
+                  <option>Nghệ thuật (Âm nhạc, Mĩ thuật)</option>
+                  <option>Hoạt động trải nghiệm, hướng nghiệp</option>
+                  
+                  {/* Nhóm Ngữ văn / Tiếng Việt */}
+                  <option>Tiếng Việt (Tiểu học)</option>
+                  <option>Ngữ văn</option>
+                  
+                  {/* Nhóm Đạo đức / GDCD / GDKT&PL */}
+                  <option>Đạo đức (Tiểu học)</option>
+                  <option>Giáo dục công dân (THCS)</option>
+                  <option>Giáo dục Kinh tế và Pháp luật (THPT)</option>
+                  
+                  {/* Nhóm Tự nhiên */}
+                  <option>Tự nhiên và Xã hội (Lớp 1-3)</option>
+                  <option>Khoa học (Lớp 4-5)</option>
+                  <option>Khoa học tự nhiên (THCS)</option>
+                  <option>Vật lí (THPT)</option>
+                  <option>Hóa học (THPT)</option>
+                  <option>Sinh học (THPT)</option>
+                  
+                  {/* Nhóm Xã hội */}
+                  <option>Lịch sử và Địa lí (Tiểu học & THCS)</option>
+                  <option>Lịch sử (THPT)</option>
+                  <option>Địa lí (THPT)</option>
+                  
+                  {/* Khác */}
+                  <option>Giáo dục quốc phòng và an ninh</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm mb-2 text-gray-300">Khối lớp <span className="text-red-500">*</span></label>
                 <select value={grade} onChange={e => setGrade(e.target.value)} className="w-full bg-[#11141c] border border-gray-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none">
-                  <option>Lớp 10</option>
-                  <option>Lớp 11</option>
                   <option>Lớp 12</option>
+                  <option>Lớp 11</option>
+                  <option>Lớp 10</option>
+                  <option>Lớp 9</option>
+                  <option>Lớp 8</option>
+                  <option>Lớp 7</option>
+                  <option>Lớp 6</option>
+                  <option>Lớp 5</option>
+                  <option>Lớp 4</option>
+                  <option>Lớp 3</option>
+                  <option>Lớp 2</option>
+                  <option>Lớp 1</option>
                 </select>
               </div>
             </div>
