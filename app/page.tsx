@@ -87,7 +87,7 @@ export default function Home() {
       const url = URL.createObjectURL(modifiedDocxBlob);
       const downloadLink = document.createElement("a");
       downloadLink.href = url;
-      downloadLink.download = `[Tich_Hop_NLS]_${file.name}`;
+      downloadLink.download = `${file.name}_NLS.docx`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
