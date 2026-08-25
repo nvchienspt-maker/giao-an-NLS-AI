@@ -340,7 +340,7 @@ export default function Home() {
         <p>
           © {new Date().getFullYear()} Thiết kế & Phát triển bởi{" "}
           <a href="https://chienzz.web.app" target="_blank" rel="noopener noreferrer" className="font-bold text-blue-500 hover:text-blue-600 hover:underline transition-colors">
-            NVC Spaces
+            NVC Spaces - https://chienzz.web.app - Zalo: 0975.702.250 - Nguyễn Văn Chiến
           </a>.
         </p>
         <p className="mt-2 md:mt-0">Công cụ tự động hóa tích hợp Năng lực số và AI theo chuẩn của Bộ GD&ĐT.</p>
