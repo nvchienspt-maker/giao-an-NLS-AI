@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -13,6 +13,12 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, model, setModel }: SettingsModalProps) {
   const [tempKey, setTempKey] = useState(apiKey);
   const [tempModel, setTempModel] = useState(model);
+
+  // Đồng bộ dữ liệu khi modal được mở
+  useEffect(() => {
+    setTempKey(apiKey);
+    setTempModel(model);
+  }, [apiKey, model, isOpen]);
 
   if (!isOpen) return null;
 
@@ -34,17 +40,24 @@ export default function SettingsModal({ isOpen, onClose, apiKey, setApiKey, mode
         
         <div className="space-y-4 mb-6">
           <p className="text-sm text-gray-300">Chọn Model AI</p>
-          {/* Rút gọn danh sách Model để demo */}
+          
           <div 
-            className={`p-3 border rounded-lg cursor-pointer ${tempModel === 'gemini-1.5-flash' ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600'}`}
-            onClick={() => setTempModel('gemini-1.5-flash')}
+            className={`p-3 border rounded-lg cursor-pointer ${tempModel === 'gemini-pro' ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600'}`}
+            onClick={() => setTempModel('gemini-pro')}
           >
-            <div className="font-medium text-blue-400">Gemini 1.5 Flash <span className="text-xs bg-green-600 text-white px-2 py-1 rounded ml-2">Mặc định</span></div>
+            <div className="font-medium text-blue-400">Gemini Pro <span className="text-xs bg-green-600 text-white px-2 py-1 rounded ml-2">Mặc định</span></div>
+          </div>
+
+          <div 
+            className={`p-3 border rounded-lg cursor-pointer ${tempModel === 'gemini-1.5-pro-latest' ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600'}`}
+            onClick={() => setTempModel('gemini-1.5-pro-latest')}
+          >
+            <div className="font-medium text-blue-400">Gemini 1.5 Pro</div>
           </div>
         </div>
 
         <div className="space-y-2 mb-6">
-          <p className="text-sm text-gray-300">Nhập Gemini API Key của bạn. Key sẽ được lưu trên trình duyệt.</p>
+          <p className="text-sm text-gray-300">Nhập Gemini API Key của bạn</p>
           <input 
             type="password" 
             value={tempKey}
