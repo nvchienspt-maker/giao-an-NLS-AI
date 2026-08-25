@@ -88,29 +88,40 @@ export async function patchDocx(originalFile: File, instructions: Instruction[])
         }
       }
     } 
-    // 3. THUẬT TOÁN "THẤY LÀ CHÈN" CHO MỌI HOẠT ĐỘNG
-    else if (instruction.position === 'hoat_dong') {
-      let passedMainGoals = false;
-      let lastInsertedIndex = -1;
+    // 3. CHÈN VÀO ĐÚNG HOẠT ĐỘNG (KHỞI ĐỘNG, LUYỆN TẬP...)
+    else if (instruction.position === 'hoat_dong' && instruction.activity_keyword) {
+      const actKey = normalize(instruction.activity_keyword);
+      let startIndex = -1;
 
-      // Quét từ trên xuống dưới toàn bộ file Word
-      for (let i = 0; i < chunks.length; i++) {
+      // Bước 1: Quét tìm tiêu đề hoạt động (Bỏ qua phần Mục tiêu ở đầu trang)
+      for (let i = Math.floor(chunks.length / 5); i < chunks.length; i++) {
         const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
-        
-        // Bỏ qua phần đầu, chỉ bắt đầu quét từ Tiến trình dạy học trở đi
-        if (text.includes('tiến trình dạy học') || text.includes('hoạt động dạy học') || text.includes('hoạt động 1') || text.includes('thiết bị dạy học')) {
-          passedMainGoals = true;
+        // Tìm dòng có chứa tên hoạt động (Ví dụ: "hoạt động 1", "khởi động")
+        if (text.includes(actKey) && (text.includes('hoạt động') || text.includes('hđ'))) {
+          startIndex = i;
+          break;
         }
+      }
 
-        if (passedMainGoals) {
-          // Bắt mọi biến thể: a) mục tiêu, a. mục tiêu, 1. mục tiêu, - mục tiêu, + mục tiêu...
+      // Nếu không tìm thấy chữ "hoạt động", thử tìm mỗi từ khóa (Khởi động, luyện tập...)
+      if (startIndex === -1) {
+        for (let i = Math.floor(chunks.length / 5); i < chunks.length; i++) {
+          const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
+          if (text.includes(actKey)) {
+            startIndex = i;
+            break;
+          }
+        }
+      }
+
+      // Bước 2: Bắt đầu từ tên hoạt động đó, quét xuống tối đa 25 dòng để tìm "a) mục tiêu"
+      if (startIndex !== -1) {
+        const endIndex = Math.min(startIndex + 25, chunks.length);
+        for (let i = startIndex; i < endIndex; i++) {
+          const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
           if (text.includes('a) mục tiêu') || text.includes('a. mục tiêu') || text.includes('1. mục tiêu') || text.includes('- mục tiêu') || text.includes('+ mục tiêu') || (text.includes('mục tiêu:') && !text.includes('chung'))) {
-            
-            // Chống chèn lặp (Nếu 2 dòng mục tiêu nằm sát nhau, chỉ chèn 1 lần)
-            if (lastInsertedIndex === -1 || i - lastInsertedIndex > 3) {
-              chunks[i] = chunks[i] + '</w:p>' + xmlFragment;
-              lastInsertedIndex = i;
-            }
+            chunks[i] = chunks[i] + '</w:p>' + xmlFragment;
+            break; 
           }
         }
       }

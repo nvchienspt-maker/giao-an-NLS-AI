@@ -26,33 +26,19 @@ export async function generateLessonPlan(
       } 
   });
 
-  let prompt = `BẠN LÀ MỘT HỆ THỐNG PHÂN TÍCH VÀ ĐỊNH VỊ CẤU TRÚC GIÁO ÁN SƯ PHẠM.
+  let prompt = `BẠN LÀ MỘT HỆ THỐNG PHÂN TÍCH GIÁO ÁN SƯ PHẠM.
 Bối cảnh: ${contextInfo}
 
---- QUY TẮC ĐỊNH DẠNG VÀ PHÂN LUỒNG VỊ TRÍ ---
-Bạn phải chia nhỏ các nội dung chèn vào 3 vị trí (position) sau đây:
-1. "nang_luc_chung": Chỉ dành cho Năng lực số và Năng lực AI ở Mục tiêu chung.
-2. "cuoi_muc_tieu": Chỉ dành cho Giáo dục hòa nhập ở phần Mục tiêu tổng.
-3. "hoat_dong": Dành cho các tích hợp vào MỤC TIÊU CỦA TỪNG HOẠT ĐỘNG cụ thể. BẠN BẮT BUỘC PHẢI QUÉT TOÀN BỘ GIÁO ÁN VÀ TẠO ĐỦ OBJECT CHO TẤT CẢ CÁC HOẠT ĐỘNG (Ví dụ: Hoạt động 1, Hoạt động 2, Hoạt động 3...). Không được bỏ sót bất kỳ hoạt động nào.
-
-Lưu ý: "content" phải là một Mảng (Array) các dòng. Mỗi dòng bắt đầu bằng "-" hoặc "+".
+--- QUY TẮC BẮT BUỘC (CỰC KỲ QUAN TRỌNG) ---
+1. TUYỆT ĐỐI KHÔNG được viết các mã màu (như 00008B, B8860B, 8B0000) vào trong nội dung văn bản (content).
+2. Phải tách riêng biệt từng hoạt động (Khởi động, Hình thành kiến thức, Luyện tập, Vận dụng) thành các object riêng trong JSON. Không được gộp chung.
 
 --- CÁC TÙY CHỌN ĐƯỢC BẬT ---
-- Năng lực số: LUÔN LUÔN chèn vào "nang_luc_chung" và tất cả các "hoat_dong" (Màu: 00008B).
+- Năng lực số: LUÔN chèn vào "nang_luc_chung" và tất cả các "hoat_dong".
 `;
 
-  if (options.ai) {
-    prompt += `- [ĐÃ BẬT] Chèn "Năng lực AI" vào "nang_luc_chung" và tất cả các "hoat_dong" (Màu: B8860B).\n`;
-  } else {
-    prompt += `- [ĐÃ TẮT] KHÔNG chèn Năng lực AI.\n`;
-  }
-
-  if (options.inclusive) {
-    prompt += `- [ĐÃ BẬT] Chèn "Giáo dục hòa nhập" vào "cuoi_muc_tieu" và lồng ghép vào "hoat_dong".\n`;
-  } else {
-    prompt += `- [ĐÃ TẮT] KHÔNG chèn Giáo dục hòa nhập.\n`;
-  }
-
+  if (options.ai) prompt += `- [ĐÃ BẬT] Chèn "Năng lực AI" vào "nang_luc_chung" và "hoat_dong".\n`;
+  if (options.inclusive) prompt += `- [ĐÃ BẬT] Chèn "Giáo dục hòa nhập" vào "cuoi_muc_tieu" và "hoat_dong".\n`;
   if (options.foreignLang) prompt += `- [ĐÃ BẬT] Tích hợp năng lực ngoại ngữ (CLIL).\n`;
   if (options.bilingual) prompt += `- [ĐÃ BẬT] Tạo song ngữ Việt - Anh hoạt động Khởi động.\n`;
   if (appendixContent) prompt += `\n[PHỤ LỤC PHÂN PHỐI CHƯƠNG TRÌNH]\n${appendixContent}\n`;
@@ -62,7 +48,7 @@ Lưu ý: "content" phải là một Mảng (Array) các dòng. Mỗi dòng bắt
 ${lessonContent}
 
 --- ĐỊNH DẠNG ĐẦU RA BẮT BUỘC (JSON ARRAY) ---
-Trả về mảng JSON thuần túy theo cấu trúc mẫu sau (Chỉ cần 1 object hoat_dong là đủ):
+Trả về mảng JSON thuần túy (Sinh đủ object cho tất cả các hoạt động có trong giáo án):
 [
   {
     "position": "nang_luc_chung",
@@ -76,7 +62,26 @@ Trả về mảng JSON thuần túy theo cấu trúc mẫu sau (Chỉ cần 1 ob
   },
   {
     "position": "hoat_dong",
-    "content": ["- Phát triển năng lực số: ..."],
+    "activity_keyword": "khởi động",
+    "content": ["- Năng lực số: Nhận diện...", "- Năng lực AI: ..."],
+    "color": "00008B"
+  },
+  {
+    "position": "hoat_dong",
+    "activity_keyword": "hình thành kiến thức",
+    "content": ["- Năng lực số: Thực hành cấu hình..."],
+    "color": "00008B"
+  },
+  {
+    "position": "hoat_dong",
+    "activity_keyword": "luyện tập",
+    "content": ["- Năng lực số: ..."],
+    "color": "00008B"
+  },
+  {
+    "position": "hoat_dong",
+    "activity_keyword": "vận dụng",
+    "content": ["- Năng lực số: ..."],
     "color": "00008B"
   }
 ]
