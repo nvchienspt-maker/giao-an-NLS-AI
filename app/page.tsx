@@ -324,24 +324,28 @@ export default function Home() {
         </div>
 
         <div className="space-y-6">
-          <div className={`rounded-xl border overflow-hidden flex flex-col h-full min-h-[500px] ${isDarkMode ? 'bg-[#1e2330] border-green-500/30' : 'bg-white border-green-200 shadow-sm'}`}>
-            <div className={`p-4 border-b flex justify-between items-center ${isDarkMode ? 'bg-green-500/10 border-green-500/20' : 'bg-green-50 border-green-200'}`}>
-              <h3 className="font-bold text-green-600 dark:text-green-400">Giáo án đã hoàn thiện</h3>
-              <button onClick={exportToWord} disabled={!result} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition shadow-lg ${result ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-400 text-white cursor-not-allowed opacity-70'}`}>
+          <div className={`rounded-xl border overflow-hidden flex flex-col h-full min-h-[500px] ${isDarkMode ? 'bg-[#1e2330] border-gray-800' : 'bg-white border-green-200 shadow-sm'}`}>
+            <div className={`p-4 border-b flex justify-between items-center ${isDarkMode ? 'bg-[#181c25] border-gray-800' : 'bg-green-50 border-green-200'}`}>
+              <h3 className={`font-bold ${isDarkMode ? 'text-gray-200' : 'text-green-600'}`}>Giáo án đã hoàn thiện</h3>
+              <button onClick={exportToWord} disabled={!result} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition shadow-sm ${result ? 'bg-green-600 hover:bg-green-700 text-white' : (isDarkMode ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed')}`}>
                 <Download size={16} /> Tải file Word (.doc)
               </button>
             </div>
             
-            <div className={`p-6 overflow-y-auto max-h-[800px] flex-1 custom-scrollbar ${isDarkMode ? 'bg-white text-black' : 'bg-[#fcfcfc] text-black'}`}>
+            {/* ĐÃ FIX NỀN TRẮNG TẠI ĐÂY */}
+            <div className={`p-6 overflow-y-auto max-h-[800px] flex-1 custom-scrollbar ${isDarkMode ? 'bg-[#11141c] text-gray-300' : 'bg-[#fcfcfc] text-black'}`}>
               {result ? (
-                <div id="ai-result-content" dangerouslySetInnerHTML={{ __html: result }} className="prose max-w-none" />
+                // Nếu có kết quả, bọc trong 1 trang giấy trắng cho dễ đọc text (giống style Word)
+                <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-white text-black' : ''}`}>
+                  <div id="ai-result-content" dangerouslySetInnerHTML={{ __html: result }} className="prose max-w-none" />
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
-                  <div className={`p-6 rounded-full mb-4 ${isDarkMode ? 'bg-gray-100' : 'bg-gray-50'}`}>
-                    <FileText size={48} className={isDarkMode ? 'text-gray-300' : 'text-gray-300'} />
+                  <div className={`p-6 rounded-full mb-4 ${isDarkMode ? 'bg-[#1e2330]' : 'bg-gray-50'}`}>
+                    <FileText size={48} className={isDarkMode ? 'text-gray-600' : 'text-gray-300'} />
                   </div>
                   <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Chưa có dữ liệu hiển thị</h4>
-                  <p className={`text-center text-sm max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className={`text-center text-sm max-w-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-500'}`}>
                     Vui lòng tải giáo án lên, chọn các tùy chọn tích hợp và bấm <b>"Tạo Giáo Án"</b> để bắt đầu.
                   </p>
                 </div>
