@@ -5,13 +5,13 @@ export async function extractTextFromFile(file: File): Promise<string> {
 
   // Xử lý file Word
   if (file.name.endsWith('.docx')) {
-    const result = await mammoth.extractRawText({ arrayBuffer });
+    // SỬ DỤNG convertToHtml ĐỂ GIỮ NGUYÊN CẤU TRÚC BẢNG BIỂU VÀ ĐỊNH DẠNG HTML
+    const result = await mammoth.convertToHtml({ arrayBuffer });
     return result.value;
   }
 
-  // Xử lý file PDF
+  // Xử lý file PDF (PDF không hỗ trợ xuất HTML dễ dàng như Word, nên vẫn lấy Text)
   if (file.name.endsWith('.pdf')) {
-    // [ĐÃ SỬA] Sử dụng dynamic import để tránh lỗi DOMMatrix khi Next.js build trên server Node.js
     const pdfjsLib = await import('pdfjs-dist');
     pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
