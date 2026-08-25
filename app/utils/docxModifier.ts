@@ -6,7 +6,6 @@ interface Instruction {
   color: string;
 }
 
-// Hàm mã hóa ký tự đặc biệt để không làm hỏng cấu trúc XML của Word
 function escapeXml(unsafe: string) {
     return unsafe.replace(/[<>&'"]/g, function (c) {
         switch (c) {
@@ -29,34 +28,29 @@ export async function patchDocx(originalFile: File, instructions: Instruction[])
 
   const normalize = (str: string) => str.replace(/\s+/g, ' ').trim().toLowerCase();
 
-  // TÁCH CHUỖI AN TOÀN: Cắt file XML theo từng thẻ đóng đoạn văn </w:p>
   let chunks = xmlString.split('</w:p>');
 
   for (const instruction of instructions) {
     const target = normalize(instruction.target_text);
     if (!target) continue;
 
-    // Mã hóa text an toàn trước khi tiêm vào XML
     const safeInsertText = escapeXml(instruction.insert_text);
-    const colorVal = instruction.color.replace('#', '');
+    const colorVal = instruction.color ? instruction.color.replace('#', '') : '00008B';
     
-    // Tạo đoạn mã OOXML chứa nội dung mới (không đóng thẻ </w:p> vì hàm join ở cuối sẽ làm việc đó)
+    // Tạo đoạn văn bản XML mới với màu sắc chuẩn xác theo yêu cầu
     const unclosedNewPXml = `<w:p><w:r><w:rPr><w:color w:val="${colorVal}"/></w:rPr><w:t>${safeInsertText}</w:t></w:r>`;
 
     for (let i = 0; i < chunks.length - 1; i++) {
-      // Rút trích chữ thô từ đoạn XML hiện tại để so sánh tìm vị trí
       const textContent = normalize(chunks[i].replace(/<[^>]+>/g, ''));
       
-      // Nếu tìm thấy đoạn văn chứa mỏ neo mục tiêu
       if (textContent.includes(target)) {
-        // Nối đoạn XML mới vào ngay sau đoạn văn hiện tại
+        // Tiêm vào ngay bên dưới đoạn văn tìm thấy (Hỗ trợ chèn ở cả mục tiêu chung lẫn mục tiêu hoạt động)
         chunks[i] = chunks[i] + '</w:p>' + unclosedNewPXml;
-        break; // Chèn xong lệnh này thì ngắt vòng lặp, chuyển sang lệnh AI tiếp theo
+        break; 
       }
     }
   }
 
-  // Gắn lại các đoạn văn bằng thẻ đóng </w:p>
   const newXmlString = chunks.join('</w:p>');
   zip.file("word/document.xml", newXmlString);
 
