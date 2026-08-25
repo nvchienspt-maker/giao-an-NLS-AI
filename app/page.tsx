@@ -1,4 +1,5 @@
 'use client';
+import { patchDocx } from './utils/docxModifier';
 import { useState, useEffect } from 'react';
 import { Settings, FileText, Loader2, Cpu, HeartHandshake, Globe, Languages, Download, AlertCircle, Copy } from 'lucide-react';
 import SettingsModal from './components/SettingsModal';
@@ -49,62 +50,52 @@ export default function Home() {
 
   const handleGenerate = async () => {
     setErrorMessage('');
-    if (!file) { setErrorMessage('Vui lòng chọn tệp giáo án đầu vào!'); return; }
+    if (!file) { setErrorMessage('Vui lòng chọn tệp giáo án (.docx)!'); return; }
     if (!apiKey) { setErrorMessage('Vui lòng thiết lập API Key!'); return; }
     
     setIsLoading(true);
     setResult('');
-    
     let secondsWaited = 0;
-    setProgressText("Đang đọc tệp và trích xuất cấu trúc gốc...");
+    setProgressText("Hệ thống đang nội suy vị trí cần chèn...");
 
     const progressInterval = setInterval(() => {
       secondsWaited += 2; 
-      setProgressText(`AI đang tính toán vị trí chèn văn bản... Vui lòng đợi (${secondsWaited}s)`);
+      setProgressText(`AI đang tính toán cấu trúc tài liệu... Vui lòng đợi (${secondsWaited}s)`);
     }, 2000);
     
     try {
-      // 1. Trích xuất HTML gốc (CÓ HÌNH ẢNH DẠNG BASE64 để giữ cấu trúc)
-      const originalHTML = await extractTextFromFile(file);
-      
-      // 2. Tạo bản sao NHẸ (KHÔNG ẢNH) để gửi cho AI đọc (Giúp tránh lỗi 429 Quota)
-      const lightweightHTMLForAI = originalHTML.replace(/<img[^>]*>/gi, '[HÌNH ẢNH]');
-      
-      let appendixText = "";
-      if (appendixFile) {
-         appendixText = await extractTextFromFile(appendixFile);
-         appendixText = appendixText.replace(/<img[^>]*>/gi, '[HÌNH ẢNH]');
-      }
-
+      // 1. Chỉ trích xuất Text thô để AI đọc (tránh mọi lỗi 429 quá tải token do hình ảnh)
+      const textContent = await extractTextFromFile(file);
+      let appendixText = appendixFile ? await extractTextFromFile(appendixFile) : "";
       const contextInfo = `Môn học: ${subject}, Khối lớp: ${grade}`;
       
-      // 3. Gửi bản NHẸ cho AI và nhận về mảng JSON chỉ đường
-      const aiResponseJSON = await generateLessonPlan(apiKey, model, lightweightHTMLForAI, options, contextInfo, appendixText);
+      // 2. Nhận bộ lệnh JSON từ AI
+      const aiResponseJSON = await generateLessonPlan(apiKey, model, textContent, options, contextInfo, appendixText);
       
-      // 4. Giải mã JSON
       let instructions = [];
       try {
         instructions = JSON.parse(aiResponseJSON);
       } catch (e) {
-        throw new Error("AI không trả về đúng định dạng JSON để xử lý. Vui lòng thử lại.");
+        throw new Error("AI không trả về đúng định dạng JSON. Vui lòng thử lại.");
       }
 
-      // 5. Vá dữ liệu vào bản GỐC (Bản có hình ảnh)
-      let patchedHTML = originalHTML;
-      instructions.forEach((instruction: any) => {
-          if (instruction.anchorText && instruction.insertHTML) {
-             // Hàm replace chỉ thay thế ở đúng vị trí anchorText đầu tiên tìm thấy
-             if (patchedHTML.includes(instruction.anchorText)) {
-                patchedHTML = patchedHTML.replace(instruction.anchorText, instruction.anchorText + " " + instruction.insertHTML);
-             }
-          }
-      });
+      // 3. Gọi cỗ máy Tiêm dữ liệu vào file GỐC (.docx)
+      setProgressText("Đang vá dữ liệu và đóng gói file...");
+      const modifiedDocxBlob = await patchDocx(file, instructions);
       
+      // 4. Tự động tải xuống ngay lập tức file đã tích hợp
+      const url = URL.createObjectURL(modifiedDocxBlob);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = url;
+      downloadLink.download = `[Tich_Hop_NLS]_${file.name}`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(url);
+
       clearInterval(progressInterval);
       setProgressText('Hoàn tất!');
-      
-      // Render bản HTML đã được vá lên màn hình (Mọi thứ sẽ giống gốc 100%)
-      setResult(patchedHTML);
+      setResult("Đã tích hợp thành công! File giáo án gốc với cấu trúc giữ nguyên 100% đã được tải xuống máy của bạn.");
 
     } catch (error: any) {
       clearInterval(progressInterval);

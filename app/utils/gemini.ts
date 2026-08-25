@@ -1,5 +1,4 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GENERAL_GUIDELINES, INTEGRATION_RULES } from './competencies';
 
 interface LessonOptions {
   ai: boolean;
@@ -22,45 +21,41 @@ export async function generateLessonPlan(
   const model = genAI.getGenerativeModel({ 
       model: modelName,
       generationConfig: { 
-        responseMimeType: "application/json", // BẮT BUỘC TRẢ VỀ ĐỊNH DẠNG JSON
+        responseMimeType: "application/json", // ÉP TRẢ VỀ JSON THUẦN
         temperature: 0.1, 
       } 
   });
 
-  let prompt = `BẠN LÀ MỘT HỆ THỐNG TÌM KIẾM VÀ ĐỀ XUẤT VỊ TRÍ CHÈN VĂN BẢN TRÊN NỀN HTML.
+  let prompt = `BẠN LÀ MỘT HỆ THỐNG ĐỊNH VỊ VÀ ĐỀ XUẤT NỘI DUNG CHÈN VÀO TÀI LIỆU.
 Bối cảnh: ${contextInfo}
-${GENERAL_GUIDELINES}
-`;
 
-  if (appendixContent) {
-    prompt += `\n[PHỤ LỤC PPCT]\nTìm tên bài học của "Giáo án gốc" trong Phụ lục này để lấy đúng mã năng lực và diễn giải chèn vào "Mục tiêu bài học".\n${appendixContent}\n`;
-  }
-
-  prompt += `
-[GIÁO ÁN GỐC (Mã HTML)]
-${lessonContent}
-
---- NHIỆM VỤ ---
-Bạn KHÔNG được viết lại giáo án. Nhiệm vụ của bạn là tìm các vị trí phù hợp trong mã HTML trên để chèn thêm nội dung mới.
-Quy tắc chèn và màu sắc (TUYỆT ĐỐI KHÔNG DÙNG THẺ IN ĐẬM CHO CÁC NỘI DUNG NÀY):
-- ${INTEGRATION_RULES.nls}
-`;
-
-  if (options.ai) prompt += `- ${INTEGRATION_RULES.ai}\n`;
-  if (options.inclusive) prompt += `- ${INTEGRATION_RULES.inclusive}\n`;
-  if (options.foreignLang) prompt += `- ${INTEGRATION_RULES.foreignLang}\n`;
-  if (options.bilingual) prompt += `- ${INTEGRATION_RULES.bilingual}\n`;
-
-  prompt += `
---- ĐỊNH DẠNG ĐẦU RA BẮT BUỘC (JSON ARRAY) ---
-Bạn PHẢI trả về một mảng JSON chứa các object mô tả thao tác chèn:
+--- QUY TẮC ĐẦU RA BẮT BUỘC (JSON ARRAY) ---
+Trả về MỘT MẢNG JSON các hành động chèn dữ liệu. Cấu trúc mỗi object:
 [
   {
-    "anchorText": "Copy Y HỆT một đoạn văn bản/mã HTML từ Giáo án gốc (dài khoảng 10-20 từ, bao gồm cả thẻ <strong>, <td>... nếu có) nằm ngay TRƯỚC vị trí bạn muốn chèn. Phải copy đúng 100% từng khoảng trắng để hệ thống có thể tìm thấy.",
-    "insertHTML": "Mã HTML chứa nội dung bạn chèn thêm (Ví dụ: '<br><span style=\"color: #00008B;\">...</span>')"
+    "target_text": "Copy CHÍNH XÁC một đoạn văn bản/câu ngắn (từ 5-15 từ) từ 'Giáo án gốc' nằm ngay TRƯỚC vị trí bạn muốn chèn. Ví dụ: 'Mục tiêu: HS có khái niệm về AI'",
+    "insert_text": "Nội dung Năng lực bạn muốn chèn NGAY BÊN DƯỚI đoạn mốc đó. (Tuyệt đối không dùng thẻ HTML, chỉ viết text thuần).",
+    "color": "Mã màu Hex (VD: 00008B cho NLS, B8860B cho AI, 8B0000 cho Hòa nhập)"
   }
 ]
 `;
+
+  if (appendixContent) {
+    prompt += `\n[PHỤ LỤC PPCT]\nTìm tên bài học trong Phụ lục để lấy mã và diễn giải Năng lực tương ứng, sau đó đề xuất lệnh chèn vào sau các mục tiêu của giáo án.\n${appendixContent}\n`;
+  }
+
+  prompt += `
+[GIÁO ÁN GỐC]
+${lessonContent}
+
+--- NHIỆM VỤ TÍCH HỢP ---
+1. Năng lực số: Chèn vào các mục tiêu. Màu bắt buộc: 00008B
+`;
+
+  if (options.ai) prompt += `2. Năng lực AI: Chèn vào mục tiêu hoặc hoạt động. Màu bắt buộc: B8860B\n`;
+  if (options.inclusive) prompt += `3. Giáo dục hòa nhập: Chèn vào phần phương pháp hỗ trợ dưới các hoạt động. Màu bắt buộc: 8B0000\n`;
+  if (options.foreignLang) prompt += `4. Ngoại ngữ CLIL: Chèn thuật ngữ TA. Màu bắt buộc: 006400\n`;
+  if (options.bilingual) prompt += `5. Song ngữ: Chèn bản dịch tiếng Anh xuống dưới câu tiếng Việt tại phần Khởi động.\n`;
 
   try {
     const result = await model.generateContent(prompt);
