@@ -62,30 +62,21 @@ Lưu ý: "content" phải là một Mảng (Array) các dòng. Mỗi dòng bắt
 ${lessonContent}
 
 --- ĐỊNH DẠNG ĐẦU RA BẮT BUỘC (JSON ARRAY) ---
-Trả về mảng JSON thuần túy theo cấu trúc mẫu sau (Lưu ý phải có đủ object cho TẤT CẢ hoạt động):
+Trả về mảng JSON thuần túy theo cấu trúc mẫu sau (Chỉ cần 1 object hoat_dong là đủ):
 [
   {
     "position": "nang_luc_chung",
-    "content": [
-      "- Năng lực số (Theo PPCT):",
-      "+ 5.1.NC1a: ..."
-    ],
+    "content": ["- Năng lực số:", "+ 5.1.NC1a: ..."],
     "color": "00008B"
   },
   {
-    "position": "hoat_dong",
-    "activity_keyword": "Hoạt động 1",
-    "content": [
-      "- Phát triển năng lực số (...): ..."
-    ],
-    "color": "00008B"
+    "position": "cuoi_muc_tieu",
+    "content": ["- Giải pháp giáo dục hòa nhập: ..."],
+    "color": "8B0000"
   },
   {
     "position": "hoat_dong",
-    "activity_keyword": "Hoạt động 2",
-    "content": [
-      "- Phát triển năng lực số (...): ..."
-    ],
+    "content": ["- Phát triển năng lực số: ..."],
     "color": "00008B"
   }
 ]
