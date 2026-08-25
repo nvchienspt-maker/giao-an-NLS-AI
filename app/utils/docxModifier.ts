@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 interface Instruction {
   position: 'general_goal' | 'activity_goal';
   activity_keyword?: string;
-  content: string[]; // <-- Chuyển thành Mảng chuỗi (Array of strings)
+  content: string[] | string; // Hỗ trợ an toàn cả dạng Mảng và Chuỗi
   color: string;
 }
 
@@ -28,22 +28,37 @@ export async function patchDocx(originalFile: File, instructions: Instruction[])
   if (!xmlString) throw new Error("Không thể đọc cấu trúc file Word");
 
   const normalize = (str: string) => str.replace(/\s+/g, ' ').trim().toLowerCase();
+  
+  // Cắt file XML theo thẻ đóng đoạn văn
   let chunks = xmlString.split('</w:p>');
 
   for (const instruction of instructions) {
     const colorVal = instruction.color ? instruction.color.replace('#', '') : '00008B';
     let xmlFragment = '';
 
-    // Lặp qua từng dòng trong mảng để ép tạo thẻ đoạn văn mới (<w:p>) trong Word
+    // Xử lý an toàn: Đưa nội dung về mảng để lặp
+    let lines: string[] = [];
     if (Array.isArray(instruction.content)) {
-        for (const line of instruction.content) {
-            if (line.trim() !== '') {
-                const safeLine = escapeXml(line);
-                xmlFragment += `<w:p><w:r><w:rPr><w:color w:val="${colorVal}"/></w:rPr><w:t>${safeLine}</w:t></w:r></w:p>`;
-            }
+        lines = instruction.content;
+    } else if (typeof instruction.content === 'string') {
+        lines = instruction.content.split('\n');
+    }
+
+    // Lặp qua từng dòng để tạo các đoạn văn gạch đầu dòng (<w:p>)
+    for (const line of lines) {
+        if (line.trim() !== '') {
+            const safeLine = escapeXml(line);
+            xmlFragment += `<w:p><w:r><w:rPr><w:color w:val="${colorVal}"/></w:rPr><w:t>${safeLine}</w:t></w:r></w:p>`;
         }
     }
 
+    // BẢN VÁ LỖI CẤU TRÚC: Cắt bỏ thẻ đóng </w:p> cuối cùng (độ dài 6 ký tự)
+    // Để khi hàm chunks.join chạy ở cuối, nó sẽ tự động nối thẻ đóng vào vừa khít
+    if (xmlFragment.endsWith('</w:p>')) {
+        xmlFragment = xmlFragment.slice(0, -6);
+    }
+
+    // Tiến hành tiêm dữ liệu
     if (instruction.position === 'general_goal') {
       for (let i = 0; i < chunks.length; i++) {
         const text = normalize(chunks[i].replace(/<[^>]+>/g, ''));
@@ -61,6 +76,7 @@ export async function patchDocx(originalFile: File, instructions: Instruction[])
         if (text.includes(actKey)) {
           foundActivity = true;
         }
+        // Tìm thấy dòng Mục tiêu của hoạt động
         if (foundActivity && (text.includes('a) mục tiêu') || text.includes('mục tiêu:') || text.includes('a) mục tiêu:'))) {
           chunks[i] = chunks[i] + '</w:p>' + xmlFragment;
           break;
@@ -69,6 +85,7 @@ export async function patchDocx(originalFile: File, instructions: Instruction[])
     }
   }
 
+  // Khâu cuối: Nối toàn bộ file XML lại, các chỗ bị thiếu </w:p> ở bản vá sẽ được đắp vào đây
   const newXmlString = chunks.join('</w:p>');
   zip.file("word/document.xml", newXmlString);
 
