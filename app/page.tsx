@@ -45,67 +45,73 @@ export default function Home() {
     }
   };
 
+  // ... (giữ nguyên phần trên của page.tsx) ...
+
   const handleGenerate = async () => {
-    setErrorMessage(''); // Reset lỗi trước khi chạy mới
-    
-    if (!file) {
-      setErrorMessage('Vui lòng chọn tệp giáo án đầu vào!');
-      return;
-    }
-    if (!apiKey) {
-      setErrorMessage('Vui lòng thiết lập API Key!');
-      return;
-    }
+    setErrorMessage('');
+    if (!file) { setErrorMessage('Vui lòng chọn tệp giáo án đầu vào!'); return; }
+    if (!apiKey) { setErrorMessage('Vui lòng thiết lập API Key!'); return; }
     
     setIsLoading(true);
     setResult('');
     
-    const steps = [
-      "Đang trích xuất dữ liệu HTML từ tệp gốc...",
-      appendixFile ? "Đang phân tích Phụ lục và đối chiếu Năng lực..." : "",
-      "Đang tải dữ liệu lên máy chủ Google AI...",
-      "AI đang cấu trúc và tính toán vị trí chèn HTML...",
-      options.ai ? "Đang tích hợp Năng lực Trí tuệ nhân tạo..." : "",
-      options.inclusive ? "Đang bổ sung phương pháp Giáo dục hòa nhập..." : "",
-      options.foreignLang ? "Đang gắn thuật ngữ chuyên ngành (CLIL)..." : "",
-      options.bilingual ? "Đang tạo phân đoạn Song ngữ Việt - Anh..." : "",
-      "Đang hoàn thiện mã HTML..."
-    ].filter(Boolean);
-
-    let stepIndex = 0;
     let secondsWaited = 0;
-    setProgressText(steps[0]);
+    setProgressText("Đang đọc tệp và trích xuất cấu trúc gốc...");
 
     const progressInterval = setInterval(() => {
-      secondsWaited += 2.5; 
-      
-      if (stepIndex < steps.length - 1) {
-        stepIndex++;
-        setProgressText(steps[stepIndex]);
-      } else {
-        setProgressText(`AI đang tổng hợp văn bản... Vui lòng đợi (${Math.floor(secondsWaited)}s)`);
-      }
-    }, 2500);
+      secondsWaited += 2; 
+      setProgressText(`Đang phân tích và nội suy vị trí chèn... Vui lòng đợi (${secondsWaited}s)`);
+    }, 2000);
     
     try {
-      const textContent = await extractTextFromFile(file);
+      // 1. Trích xuất HTML gốc (CÓ HÌNH ẢNH) để giữ làm bản gốc
+      const originalHTML = await extractTextFromFile(file);
+      
+      // 2. Tạo bản sao NHẸ (KHÔNG HÌNH ẢNH) để gửi cho AI đọc
+      // Dùng Regex xóa các thẻ img chứa base64 dài dòng
+      const lightweightHTMLForAI = originalHTML.replace(/<img[^>]*src="data:image[^>]*>/gi, '[HÌNH ẢNH ĐÃ ẨN]');
       
       let appendixText = "";
       if (appendixFile) {
          appendixText = await extractTextFromFile(appendixFile);
+         appendixText = appendixText.replace(/<img[^>]*src="data:image[^>]*>/gi, '[HÌNH ẢNH ĐÃ ẨN]');
       }
 
       const contextInfo = `Môn học: ${subject}, Khối lớp: ${grade}`;
       
-      const aiResponse = await generateLessonPlan(apiKey, model, textContent, options, contextInfo, appendixText);
+      // 3. Gửi bản NHẸ cho AI và nhận về JSON chứa các vị trí cần chèn
+      const aiResponseJSON = await generateLessonPlan(apiKey, model, lightweightHTMLForAI, options, contextInfo, appendixText);
+      
+      // 4. Phân tích cú pháp JSON
+      let instructions = [];
+      try {
+        instructions = JSON.parse(aiResponseJSON);
+      } catch (e) {
+        throw new Error("AI không trả về đúng định dạng JSON. Vui lòng thử lại.");
+      }
+
+      // 5. JavaScript thực hiện chèn dữ liệu vào bản HTML GỐC (CÓ HÌNH ẢNH)
+      let patchedHTML = originalHTML;
+      instructions.forEach((instruction: any) => {
+          if (instruction.anchorText && instruction.insertHTML) {
+             // Thay thế đoạn mỏ neo bằng: [Đoạn mỏ neo] + [Nội dung chèn thêm]
+             // Dùng split và join để thay thế chuỗi an toàn
+             const parts = patchedHTML.split(instruction.anchorText);
+             if (parts.length > 1) {
+                 patchedHTML = parts.join(`${instruction.anchorText} ${instruction.insertHTML}`);
+             }
+          }
+      });
       
       clearInterval(progressInterval);
       setProgressText('Hoàn tất!');
-      setResult(aiResponse);
+      
+      // Hiển thị bản HTML đã được vá
+      setResult(patchedHTML);
+
     } catch (error: any) {
       clearInterval(progressInterval);
-      // Thay thế alert bằng việc gán thông báo lỗi vào UI
-      setErrorMessage(`[GoogleGenerativeAI Error]:\n${error.message}`);
+      setErrorMessage(`[Lỗi hệ thống]:\n${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -115,23 +121,22 @@ export default function Home() {
     if (!result) return;
     
     const header = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
-            xmlns:w='urn:schemas-microsoft-com:office:word' 
-            xmlns='http://www.w3.org/TR/REC-html40'>
+      <html xmlns:v="urn:schemas-microsoft-com:vml"
+            xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:w="urn:schemas-microsoft-com:office:word"
+            xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"
+            xmlns="http://www.w3.org/TR/REC-html40">
       <head>
         <meta charset='utf-8'>
         <title>Giáo án</title>
         <style>
-          @page WordSection1 {
-              size: 21.0cm 29.7cm;
-              margin: 2.0cm 2.0cm 2.0cm 2.0cm;
-          }
+          @page WordSection1 { size: 21.0cm 29.7cm; margin: 2.0cm; }
           div.WordSection1 { page: WordSection1; }
           body { font-family: 'Times New Roman', serif; font-size: 14pt; line-height: 1.5; }
-          h1, h2, h3, h4, h5 { font-family: 'Times New Roman', serif; color: #000; }
-          p { margin: 0 0 8pt 0; }
-          table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 10px; }
-          table, td, th { border: 1pt solid black; padding: 5px; vertical-align: top; }
+          /* Đảm bảo hình ảnh không bị tràn lề trong Word */
+          img { max-width: 100%; height: auto; } 
+          table { width: 100%; border-collapse: collapse; }
+          table, td, th { border: 1pt solid black; padding: 5px; }
         </style>
       </head>
       <body>
@@ -152,6 +157,8 @@ export default function Home() {
     document.body.removeChild(fileDownload);
     URL.revokeObjectURL(url);
   };
+
+  // ... (giữ nguyên phần giao diện return) ...
 
   return (
     <div className="min-h-screen bg-[#11141c] text-gray-200 font-sans p-4 md:p-8">
