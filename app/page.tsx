@@ -176,8 +176,23 @@ export default function Home() {
       <header className={`flex flex-col md:flex-row justify-between items-center mb-8 border-b pb-4 gap-4 ${theme.borderHeader}`}>
         <div className="flex-shrink-0">
           <h1 className={`text-2xl font-bold flex items-center gap-3 ${theme.textTitle}`}>
-            <div className="bg-blue-600 p-2 rounded-lg"><FileText size={24} className="text-white"/></div>
-            SOẠN GIÁO ÁN NĂNG LỰC SỐ
+            <div className="bg-blue-600 p-2 rounded-lg">
+              <FileText size={24} className="text-white" />
+            </div>
+            
+            <div>
+              <div>SOẠN GIÁO ÁN NĂNG LỰC SỐ - LITE</div>
+
+              {/* LINK BÊN DƯỚI */}
+              <a
+                href="https://nvc-khbd.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-normal text-blue-500 hover:text-blue-600 hover:underline transition-colors"
+              >
+                🔗 Bản đầy đủ (Đang phát triển)
+              </a>
+            </div>
           </h1>
         </div>
 
