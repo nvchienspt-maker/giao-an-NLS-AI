@@ -4,8 +4,9 @@ export async function extractTextFromFile(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
 
   if (file.name.endsWith('.docx')) {
-    // KHÔNG CẤM ẢNH NỮA: Cho phép mammoth trích xuất toàn bộ hình ảnh và bảng biểu
-    const result = await mammoth.convertToHtml({ arrayBuffer });
+    // SỬ DỤNG extractRawText: Chỉ lấy chữ thô, bỏ qua toàn bộ hình ảnh và HTML.
+    // Điều này giúp giảm token từ 250.000 xuống chỉ còn vài ngàn, chặn đứng lỗi 429.
+    const result = await mammoth.extractRawText({ arrayBuffer });
     return result.value;
   }
 
