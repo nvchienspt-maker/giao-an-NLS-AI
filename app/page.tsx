@@ -183,7 +183,7 @@ export default function Home() {
 
         <div className="hidden md:flex flex-col items-center justify-center text-center flex-1">
           <span className="text-sm font-bold text-blue-500 tracking-widest uppercase">
-            Phát triển bởi -{" "}
+            Phát triển bởi: {" "}
             <a href="https://chienzz.web.app" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 hover:underline transition-colors">
               NVC Spaces
             </a>
