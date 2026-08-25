@@ -1,8 +1,4 @@
 import mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Sử dụng worker từ CDN để tránh lỗi cấu hình Webpack trên Next.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 export async function extractTextFromFile(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
@@ -15,6 +11,10 @@ export async function extractTextFromFile(file: File): Promise<string> {
 
   // Xử lý file PDF
   if (file.name.endsWith('.pdf')) {
+    // [ĐÃ SỬA] Sử dụng dynamic import để tránh lỗi DOMMatrix khi Next.js build trên server Node.js
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = '';
     for (let i = 1; i <= pdf.numPages; i++) {
