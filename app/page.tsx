@@ -13,7 +13,10 @@ export default function Home() {
   
   const [subject, setSubject] = useState('Tin học');
   const [grade, setGrade] = useState('Lớp 10');
+  
+  // Tách riêng 2 state cho Giáo án gốc và Phụ lục năng lực
   const [file, setFile] = useState<File | null>(null);
+  const [appendixFile, setAppendixFile] = useState<File | null>(null);
   
   const [options, setOptions] = useState({ 
     ai: false, 
@@ -32,6 +35,12 @@ export default function Home() {
     }
   };
 
+  const handleAppendixChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setAppendixFile(e.target.files[0]);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!file) return alert('Vui lòng chọn tệp giáo án đầu vào!');
     if (!apiKey) return alert('Vui lòng thiết lập API Key!');
@@ -39,22 +48,21 @@ export default function Home() {
     setIsLoading(true);
     setResult('');
     
-    // Khởi tạo danh sách các tiến trình dựa vào tùy chọn
     const steps = [
       "Đang trích xuất dữ liệu từ tệp gốc...",
+      appendixFile ? "Đang phân tích Phụ lục và đối chiếu Năng lực..." : "",
       "Đang gửi dữ liệu và bối cảnh môn học tới AI...",
       "AI đang phân tích và cấu trúc lại Kế hoạch bài dạy...",
-      options.ai ? "Đang tích hợp Năng lực Trí tuệ nhân tạo (Màu vàng)..." : "",
-      options.inclusive ? "Đang bổ sung phương pháp Giáo dục hòa nhập (Màu đỏ)..." : "",
+      options.ai ? "Đang tích hợp Năng lực Trí tuệ nhân tạo..." : "",
+      options.inclusive ? "Đang bổ sung phương pháp Giáo dục hòa nhập..." : "",
       options.foreignLang ? "Đang gắn thuật ngữ chuyên ngành (CLIL)..." : "",
       options.bilingual ? "Đang tạo phân đoạn Song ngữ Việt - Anh..." : "",
       "Đang rà soát và định dạng lại giao diện kết quả..."
-    ].filter(Boolean); // Bỏ các chuỗi rỗng
+    ].filter(Boolean);
 
     let stepIndex = 0;
     setProgressText(steps[0]);
 
-    // Tạo hiệu ứng nhảy tiến trình mỗi 2 giây
     const progressInterval = setInterval(() => {
       stepIndex++;
       if (stepIndex < steps.length) {
@@ -64,8 +72,17 @@ export default function Home() {
     
     try {
       const textContent = await extractTextFromFile(file);
+      
+      // Đọc thêm text từ Phụ lục nếu người dùng có tải lên
+      let appendixText = "";
+      if (appendixFile) {
+         appendixText = await extractTextFromFile(appendixFile);
+      }
+
       const contextInfo = `Môn học: ${subject}, Khối lớp: ${grade}`;
-      const aiResponse = await generateLessonPlan(apiKey, model, textContent, options, contextInfo);
+      
+      // Gửi cả appendixText vào hàm AI
+      const aiResponse = await generateLessonPlan(apiKey, model, textContent, options, contextInfo, appendixText);
       
       clearInterval(progressInterval);
       setProgressText('Hoàn tất!');
@@ -81,7 +98,6 @@ export default function Home() {
   const exportToWord = () => {
     if (!result) return;
     
-    // Gói kết quả vào cấu trúc HTML có hỗ trợ Word Encoding
     const header = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' 
             xmlns:w='urn:schemas-microsoft-com:office:word' 
@@ -111,7 +127,6 @@ export default function Home() {
     document.body.appendChild(fileDownload);
     fileDownload.href = url;
     
-    // Xuất ra file .doc (Word nhận diện CSS màu Xanh, Vàng, Đỏ một cách hoàn hảo)
     fileDownload.download = `Giao_An_${subject}_${grade}.doc`;
     fileDownload.click();
     document.body.removeChild(fileDownload);
@@ -162,19 +177,54 @@ export default function Home() {
 
           <section className="bg-[#1e2330] p-6 rounded-xl border border-gray-800">
             <h2 className="text-lg font-semibold text-blue-400 mb-4 border-l-4 border-blue-500 pl-3">Tài liệu đầu vào</h2>
-            <div className="border border-dashed border-gray-600 rounded-xl p-6 bg-[#181c25] flex items-center gap-4">
-               <div className="relative">
-                 <input type="file" accept=".docx, .pdf" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
-                 <button className="bg-[#243b6b] hover:bg-[#2d4a86] text-blue-100 px-6 py-2.5 rounded-lg font-medium pointer-events-none">Chọn tệp</button>
-               </div>
-               <div className="flex-1 overflow-hidden">
-                 {file ? (
-                   <div className="flex flex-col">
-                      <span className="text-gray-300 text-sm truncate">{file.name}</span>
-                      <span className="text-green-500 text-sm flex items-center gap-1 mt-1"><FileText size={14}/> Đã tải lên</span>
+            
+            {/* Chia làm 2 cột: Giáo án và Phụ lục */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Tải Giáo án gốc */}
+              <div className="border border-dashed border-gray-600 rounded-xl p-5 bg-[#181c25] flex flex-col items-start gap-4">
+                 <div>
+                   <p className="text-sm text-gray-300 font-medium">1. Giáo án gốc <span className="text-red-500">*</span></p>
+                   <p className="text-xs text-gray-500 mt-1">Giáo án cần được biên tập (.docx, .pdf)</p>
+                 </div>
+                 <div className="flex items-center gap-3 w-full">
+                   <div className="relative shrink-0">
+                     <input type="file" accept=".docx, .pdf" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
+                     <button className="bg-[#243b6b] hover:bg-[#2d4a86] text-blue-100 px-4 py-2 rounded-lg text-sm font-medium pointer-events-none">Tải tệp lên</button>
                    </div>
-                 ) : <span className="text-gray-500 text-sm">Chưa có tệp nào được chọn (.docx, .pdf)</span>}
-               </div>
+                   <div className="flex-1 overflow-hidden">
+                     {file ? (
+                        <div className="flex flex-col">
+                           <span className="text-gray-300 text-xs truncate" title={file.name}>{file.name}</span>
+                           <span className="text-green-500 text-[10px] flex items-center gap-1 mt-0.5"><FileText size={10}/> Đã tải</span>
+                        </div>
+                     ) : <span className="text-gray-600 text-xs italic">Chưa chọn tệp</span>}
+                   </div>
+                 </div>
+              </div>
+
+              {/* Tải Phụ lục Năng lực */}
+              <div className="border border-dashed border-gray-600 rounded-xl p-5 bg-[#181c25] flex flex-col items-start gap-4">
+                 <div>
+                   <p className="text-sm text-gray-300 font-medium">2. Phụ lục Năng lực (Tùy chọn)</p>
+                   <p className="text-xs text-gray-500 mt-1">PPCT chứa danh sách năng lực (.docx, .pdf)</p>
+                 </div>
+                 <div className="flex items-center gap-3 w-full">
+                   <div className="relative shrink-0">
+                     <input type="file" accept=".docx, .pdf" onChange={handleAppendixChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
+                     <button className="bg-[#1c2a38] border border-gray-600 hover:bg-[#253646] text-gray-300 px-4 py-2 rounded-lg text-sm font-medium pointer-events-none">Tải Phụ lục</button>
+                   </div>
+                   <div className="flex-1 overflow-hidden">
+                     {appendixFile ? (
+                        <div className="flex flex-col">
+                           <span className="text-gray-300 text-xs truncate" title={appendixFile.name}>{appendixFile.name}</span>
+                           <span className="text-green-500 text-[10px] flex items-center gap-1 mt-0.5"><FileText size={10}/> Đã tải</span>
+                        </div>
+                     ) : <span className="text-gray-600 text-xs italic">Chưa có phụ lục</span>}
+                   </div>
+                 </div>
+              </div>
+
             </div>
           </section>
 
